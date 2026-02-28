@@ -27,7 +27,6 @@ interface LLMResult {
   title: string;
   category: string;
   is_explicit_placement: boolean;
-  keywords: string[];
   confidence_score: number;
   category_reason: string;
   suggested_new_category?: string;
@@ -306,7 +305,6 @@ Deno.serve(async (req: Request) => {
         title: llmResult.title,
         category_id: categoryId,
         embedding_vector: embedding,
-        intent_labels: llmResult.keywords,
         locale: lang,
       })
       .select()
@@ -391,7 +389,6 @@ You are a smart voice-note categorization assistant. Your primary job is to anal
   2. If an existing category clearly fits, use it and explain why in "category_reason" (1-3 sentences).
   3. If the topic is genuinely distinct and none of the existing categories are a good fit, suggest a short new category name (1-2 words, simple and broad). Put the new name in BOTH "category" and "suggested_new_category", and explain why in "new_category_explanation".
   4. Only create a new category when the topic is truly distinct — not for minor variations of existing topics.
-- Extract 2-5 key topic phrases ("keywords") that best summarize the note content.
 - Provide a confidence_score (0.00-1.00) for your category assignment.${atCap ? '\n- IMPORTANT: 10 categories (maximum) reached. You MUST pick from the existing list. Do NOT suggest a new category name.' : categoryCount >= 7 ? `\n- The user has ${categoryCount}/10 categories. Prefer existing ones when the topic fits, but you can still suggest a new one if nothing fits.` : ''}
 
 TASK 2 — CLEAN TRANSCRIPT:
@@ -419,7 +416,7 @@ ${categoriesList}
 Raw speech-to-text transcript:
 "${transcript}"
 
-Return JSON: { "formatted_transcript": "...", "title": "...", "category": "...", "is_explicit_placement": true/false, "keywords": ["...", "..."], "confidence_score": 0.00, "category_reason": "...", "suggested_new_category": "..." or null, "new_category_explanation": "..." or null }`,
+Return JSON: { "formatted_transcript": "...", "title": "...", "category": "...", "is_explicit_placement": true/false, "confidence_score": 0.00, "category_reason": "...", "suggested_new_category": "..." or null, "new_category_explanation": "..." or null }`,
           },
         ],
       }),
