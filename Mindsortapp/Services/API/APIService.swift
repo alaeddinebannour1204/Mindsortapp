@@ -95,9 +95,13 @@ final class APIService {
             let locale: String?
             let category_id: String?
         }
-        let response: ProcessEntryResponse = try await client.functions
+        let row: ProcessEntryResponseRow = try await client.functions
             .invoke("process-entry", options: .init(body: Payload(transcript: transcript, locale: locale, category_id: categoryId)))
-        return response
+        return ProcessEntryResponse(
+            entry: row.entry.toEntry(),
+            category: row.category.toCategory(),
+            isNewCategory: row.is_new_category
+        )
     }
 
     func searchEntries(query: String) async throws -> [Entry] {
@@ -108,6 +112,14 @@ final class APIService {
             .invoke("search-entries", options: .init(body: Payload(query: query)))
         return rows.map { $0.toEntry() }
     }
+}
+
+// MARK: - Edge Function response row
+
+private struct ProcessEntryResponseRow: Codable {
+    let entry: EntryRow
+    let category: CategoryRow
+    let is_new_category: Bool
 }
 
 // MARK: - Row types
