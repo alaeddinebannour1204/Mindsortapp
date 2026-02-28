@@ -2,22 +2,24 @@
 //  MindsortappApp.swift
 //  Mindsortapp
 //
-//  Created by Ala Eddine Bannour on 22.02.26.
-//
 
 import SwiftUI
 import SwiftData
 
 @main
 struct MindsortappApp: App {
+    @State private var store = AppStore()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            CategoryModel.self,
+            EntryModel.self,
+            CategoryLastSeen.self,
+            DismissedDefaultCategory.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -25,7 +27,8 @@ struct MindsortappApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(store)
         }
         .modelContainer(sharedModelContainer)
     }
