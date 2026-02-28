@@ -14,6 +14,12 @@ final class APIService {
         self.client = client
     }
 
+    /// Force-refresh the Supabase session so the access token is current.
+    /// Call before any sync batch to avoid 401s from expired JWTs.
+    func refreshSession() async throws {
+        _ = try await client.auth.session
+    }
+
     func fetchCategories() async throws -> [Category] {
         let response: [CategoryRow] = try await client
             .from("categories")

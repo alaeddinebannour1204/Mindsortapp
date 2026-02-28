@@ -48,6 +48,9 @@ final class SyncService {
     // MARK: - Push
 
     private func push(userID: String, db: DatabaseService) async throws {
+        // Ensure the access token is fresh before making API calls
+        try await api.refreshSession()
+
         // 1. Pending create categories (failure does not block entries)
         do {
             let pendingCats = try db.getPendingCreateCategories(userID: userID)
