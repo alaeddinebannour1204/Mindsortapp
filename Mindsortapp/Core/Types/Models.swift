@@ -35,7 +35,6 @@ struct Entry: Codable, Identifiable, Sendable {
     var transcript: String
     var title: String?
     var categoryID: String?
-    var intentLabels: [String]?
     var embeddingVector: [Double]?
     var color: String?
     let createdAt: Date

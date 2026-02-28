@@ -187,7 +187,6 @@ private struct EntryRow: Codable {
             transcript: transcript,
             title: title,
             categoryID: category_id,
-            intentLabels: nil,
             embeddingVector: nil,
             color: color,
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),

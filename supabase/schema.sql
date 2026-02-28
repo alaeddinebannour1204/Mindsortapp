@@ -82,7 +82,6 @@ CREATE TABLE entries (
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     color TEXT,
     embedding_vector DOUBLE PRECISION[],
-    intent_labels TEXT[],
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_updated TIMESTAMPTZ NOT NULL DEFAULT now(),
     locale TEXT,
