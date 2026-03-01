@@ -106,6 +106,7 @@ struct RecordView: View {
                                 .font(Theme.Typography.bodySmall())
                         }
                         .disabled(isRecording)
+                        .accessibilityLabel("Recording language: \(localeName(for: selectedLocale))")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {

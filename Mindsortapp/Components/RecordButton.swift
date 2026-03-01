@@ -29,5 +29,7 @@ struct RecordButton: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isRecording ? "Stop recording" : "Start recording")
+        .accessibilityHint(isRecording ? "Stops and saves your thought" : "Begins voice recording")
     }
 }

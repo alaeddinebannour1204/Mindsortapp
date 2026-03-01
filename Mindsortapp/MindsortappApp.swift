@@ -13,8 +13,7 @@ struct MindsortappApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             CategoryModel.self,
-            EntryModel.self,
-            CategoryLastSeen.self
+            EntryModel.self
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

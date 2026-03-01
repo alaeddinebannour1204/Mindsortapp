@@ -53,7 +53,7 @@ struct CategoryCard: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Theme.Typography.bodySmall())
                     .foregroundStyle(Theme.Colors.textTertiary)
             }
             .padding(Theme.Spacing.md)
@@ -63,5 +63,7 @@ struct CategoryCard: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? Theme.Colors.accent : Theme.Colors.border, lineWidth: isSelected ? 2 : 1)
             )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(category.name), \(category.entryCount) thoughts\(showNewBadge ? ", new" : "")")
     }
 }

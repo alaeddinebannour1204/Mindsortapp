@@ -13,6 +13,9 @@ struct HomeView: View {
     @State private var showCreateCategory = false
     @State private var showRecordSheet = false
     @State private var newCategoryName = ""
+    @State private var renamingCategory: CategoryModel?
+    @State private var renameCategoryName = ""
+    @State private var deletingCategory: CategoryModel?
     @Query private var categoryModels: [CategoryModel]
 
     private var db: DatabaseService { DatabaseService(modelContext: modelContext) }
@@ -26,6 +29,30 @@ struct HomeView: View {
                         .foregroundStyle(Theme.Colors.text)
                         .padding(.horizontal, Theme.Spacing.md)
                         .padding(.top, Theme.Spacing.lg)
+
+                    if syncService?.syncing == true {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Syncing...")
+                                .font(Theme.Typography.caption())
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .transition(.opacity)
+                    } else if syncService?.lastSyncFailed == true {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(Theme.Typography.caption())
+                                .foregroundStyle(Theme.Colors.record)
+                            Text("Sync failed — pull to retry")
+                                .font(Theme.Typography.caption())
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .transition(.opacity)
+                        .accessibilityLabel("Sync failed. Pull down to retry.")
+                    }
 
                     LazyVStack(spacing: Theme.Spacing.md) {
                         NavigationLink {
@@ -49,6 +76,7 @@ struct HomeView: View {
                                     .stroke(Theme.Colors.border, lineWidth: 1)
                             )
                         }
+                        .accessibilityLabel("Search thoughts")
 
                         if store.inboxCount > 0 {
                             NavigationLink {
@@ -67,6 +95,19 @@ struct HomeView: View {
                                     showNewBadge: hasNewBadge(categoryID: cat.id),
                                     isSelected: false
                                 )
+                            }
+                            .contextMenu {
+                                Button {
+                                    renameCategoryName = cat.name
+                                    renamingCategory = cat
+                                } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
+                                Button(role: .destructive) {
+                                    deletingCategory = cat
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
                             }
                         }
                     }
@@ -87,11 +128,13 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityLabel("Create category")
                         NavigationLink {
-                            ProfilePlaceholderView()
+                            SettingsView()
                         } label: {
                             Image(systemName: "person.circle")
                         }
+                        .accessibilityLabel("Settings")
                     }
                 }
             }
@@ -106,6 +149,26 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showCreateCategory) {
                 createCategorySheet
+            }
+            .alert("Rename Category", isPresented: .init(
+                get: { renamingCategory != nil },
+                set: { if !$0 { renamingCategory = nil } }
+            )) {
+                TextField("Name", text: $renameCategoryName)
+                Button("Cancel", role: .cancel) { renamingCategory = nil }
+                Button("Save") { renameCategory() }
+            }
+            .confirmationDialog(
+                "Delete \"\(deletingCategory?.name ?? "")\"?",
+                isPresented: .init(
+                    get: { deletingCategory != nil },
+                    set: { if !$0 { deletingCategory = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) { deleteCategory() }
+            } message: {
+                Text("This will delete the category and all its thoughts. This cannot be undone.")
             }
         }
         .navigationTitle("MindSort")
@@ -171,13 +234,29 @@ struct HomeView: View {
         }
     }
 
+    private func renameCategory() {
+        guard let cat = renamingCategory, let uid = store.userId else { return }
+        let name = renameCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        do {
+            try db.updateCategory(id: cat.id, name: name)
+            syncService?.requestSync(userID: uid)
+        } catch {}
+        renamingCategory = nil
+    }
+
+    private func deleteCategory() {
+        guard let cat = deletingCategory, let uid = store.userId else { return }
+        do {
+            try db.deleteCategory(id: cat.id)
+            syncService?.requestSync(userID: uid)
+            Task { await loadData() }
+        } catch {}
+        deletingCategory = nil
+    }
+
     private func hasNewBadge(categoryID: String) -> Bool {
-        guard let uid = store.userId else { return false }
-        guard let lastSeen = try? db.lastSeenDate(categoryID: categoryID, userID: uid),
-              let cat = categoryModels.first(where: { $0.id == categoryID }) else {
-            return false
-        }
-        return cat.lastUpdated > lastSeen
+        store.newlySortedCategoryIDs.contains(categoryID)
     }
 
 }
@@ -211,15 +290,10 @@ private struct InboxCard: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Theme.Colors.border, lineWidth: 1)
             )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Inbox, \(count) uncategorized thoughts")
     }
 }
 
-// MARK: - Placeholders (Phase 2+)
 
-private struct ProfilePlaceholderView: View {
-    var body: some View {
-        Text("Profile")
-            .font(Theme.Typography.h1())
-    }
-}
 
