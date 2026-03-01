@@ -34,7 +34,7 @@ final class APIService {
         let localId = id ?? UUID().uuidString
         let response: [CategoryRow] = try await client
             .from("categories")
-            .insert(Insert(id: localId, name: name, is_user_created: true))
+            .upsert(Insert(id: localId, name: name, is_user_created: true))
             .select()
             .single()
             .execute()
