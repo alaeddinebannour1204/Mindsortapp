@@ -34,7 +34,7 @@ final class SyncService {
             try await push(userID: userID, db: db)
             try await pull(userID: userID, db: db)
         } catch {
-            // Sync errors are non-fatal; local data remains
+            logger.error("Sync failed: \(error.localizedDescription)")
         }
     }
 
@@ -48,9 +48,6 @@ final class SyncService {
     // MARK: - Push
 
     private func push(userID: String, db: DatabaseService) async throws {
-        // Ensure the access token is fresh before making API calls
-        try await api.refreshSession()
-
         // 1. Pending create categories (failure does not block entries)
         do {
             let pendingCats = try db.getPendingCreateCategories(userID: userID)

@@ -14,12 +14,6 @@ final class APIService {
         self.client = client
     }
 
-    /// Force-refresh the Supabase session so the access token is current.
-    /// Call before any sync batch to avoid 401s from expired JWTs.
-    func refreshSession() async throws {
-        _ = try await client.auth.refreshSession()
-    }
-
     func fetchCategories() async throws -> [Category] {
         let response: [CategoryRow] = try await client
             .from("categories")
@@ -101,31 +95,8 @@ final class APIService {
             let locale: String?
             let category_id: String?
         }
-        let session = try await client.auth.refreshSession()
-        let accessToken = session.accessToken
-
-        guard let baseURL = SupabaseConfig.url,
-              let anonKey = SupabaseConfig.anonKey else {
-            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Supabase not configured"])
-        }
-        let url = baseURL.appendingPathComponent("functions/v1/process-entry")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(Payload(transcript: transcript, locale: locale, category_id: categoryId))
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
-        }
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw NSError(domain: "APIService", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "process-entry failed: \(httpResponse.statusCode) - \(message)"])
-        }
-
-        let row = try JSONDecoder().decode(ProcessEntryResponseRow.self, from: data)
+        let row: ProcessEntryResponseRow = try await client.functions
+            .invoke("process-entry", options: .init(body: Payload(transcript: transcript, locale: locale, category_id: categoryId)))
         return ProcessEntryResponse(
             entry: row.entry.toEntry(),
             category: row.category.toCategory(),
