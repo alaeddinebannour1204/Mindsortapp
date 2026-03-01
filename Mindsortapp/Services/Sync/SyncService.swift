@@ -56,7 +56,12 @@ final class SyncService {
                     _ = try await api.createCategory(name: cat.name, id: cat.id)
                     try db.markCategorySynced(id: cat.id)
                 } catch {
-                    logger.error("Failed to create category \(cat.id): \(error.localizedDescription)")
+                    if error.localizedDescription.contains("duplicate") {
+                        // Already exists on server — mark synced locally
+                        try? db.markCategorySynced(id: cat.id)
+                    } else {
+                        logger.error("Failed to create category \(cat.id): \(error.localizedDescription)")
+                    }
                 }
             }
         } catch {
