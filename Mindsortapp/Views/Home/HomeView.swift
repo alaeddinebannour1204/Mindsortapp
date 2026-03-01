@@ -9,7 +9,7 @@ import SwiftData
 struct HomeView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.syncCoordinator) private var syncCoordinator
+    @Environment(\.syncService) private var syncService
     @State private var showCreateCategory = false
     @State private var showRecordSheet = false
     @State private var newCategoryName = ""
@@ -116,7 +116,7 @@ struct HomeView: View {
             // Fire sync in its own Task so it is not cancelled if the view
             // disappears (e.g. navigation push while sync is still running).
             if let uid = store.userId {
-                syncCoordinator?.requestSync(userID: uid)
+                syncService?.requestSync(userID: uid)
             }
             await loadData()
         }
@@ -158,10 +158,8 @@ struct HomeView: View {
             isRefreshing = false
             return
         }
-        if let sync = syncCoordinator {
-            store.isSyncing = true
+        if let sync = syncService {
             await sync.syncAll(userID: uid)
-            store.isSyncing = false
         }
         await loadData()
         isRefreshing = false
@@ -173,7 +171,7 @@ struct HomeView: View {
         guard !name.isEmpty else { return }
         do {
             _ = try db.createCategory(userID: uid, name: name)
-            syncCoordinator?.requestSync(userID: uid)
+            syncService?.requestSync(userID: uid)
             Task { await loadData() }
         } catch {
             // Handle error
@@ -232,33 +230,3 @@ private struct ProfilePlaceholderView: View {
     }
 }
 
-private struct SearchPlaceholderView: View {
-    var body: some View {
-        VStack {
-            Text("Search")
-                .font(Theme.Typography.h1())
-            Text("Semantic search coming in Phase 5")
-                .font(Theme.Typography.body())
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.Colors.background)
-    }
-}
-
-private struct CategoryDetailPlaceholderView: View {
-    let categoryId: String
-    let categoryName: String
-
-    var body: some View {
-        VStack {
-            Text(categoryName)
-                .font(Theme.Typography.h1())
-            Text("Category detail coming in Phase 4")
-                .font(Theme.Typography.body())
-                .foregroundStyle(Theme.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.Colors.background)
-    }
-}

@@ -58,11 +58,10 @@ final class APIService {
             .execute()
     }
 
-    func fetchEntriesByCategory(categoryId: String) async throws -> [Entry] {
+    func fetchAllEntries() async throws -> [Entry] {
         let response: [EntryRow] = try await client
             .from("entries")
             .select("id, user_id, transcript, title, category_id, color, created_at, locale")
-            .eq("category_id", value: categoryId)
             .order("created_at", ascending: false)
             .execute()
             .value

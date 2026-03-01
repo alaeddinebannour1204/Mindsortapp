@@ -14,8 +14,7 @@ struct MindsortappApp: App {
         let schema = Schema([
             CategoryModel.self,
             EntryModel.self,
-            CategoryLastSeen.self,
-            DismissedDefaultCategory.self
+            CategoryLastSeen.self
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

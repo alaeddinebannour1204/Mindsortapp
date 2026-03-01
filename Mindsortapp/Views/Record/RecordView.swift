@@ -10,7 +10,7 @@ struct RecordView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.syncCoordinator) private var syncCoordinator
+    @Environment(\.syncService) private var syncService
 
     @State private var selectedLocale = "en-US"
     @State private var isRecording = false
@@ -206,7 +206,7 @@ struct RecordView: View {
             let db = DatabaseService(modelContext: modelContext)
             _ = try db.createEntry(userID: uid, transcript: transcript, title: nil, categoryID: categoryId, locale: selectedLocale)
             store.refreshInboxCount((try? db.inboxCount(userID: uid)) ?? 0)
-            syncCoordinator?.requestSync(userID: uid)
+            syncService?.requestSync(userID: uid)
             saved = true
         } catch {
             errorMessage = error.localizedDescription

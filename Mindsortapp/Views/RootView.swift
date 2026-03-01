@@ -14,7 +14,7 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var authService: AuthService?
     @State private var apiService: APIService?
-    @State private var syncCoordinator: SyncCoordinator?
+    @State private var syncService: SyncService?
     @State private var checkedSession = false
 
     var body: some View {
@@ -32,7 +32,7 @@ struct RootView: View {
             }
         }
         .environment(\.apiService, apiService)
-        .environment(\.syncCoordinator, syncCoordinator)
+        .environment(\.syncService, syncService)
         .task {
             await setupAuthAndSession()
         }
@@ -42,7 +42,7 @@ struct RootView: View {
         guard let url = SupabaseConfig.url, let key = SupabaseConfig.anonKey else {
             authService = nil
             apiService = nil
-            syncCoordinator = nil
+            syncService = nil
             checkedSession = true
             return
         }
@@ -50,7 +50,7 @@ struct RootView: View {
         authService = AuthService(client: client)
         let api = APIService(client: client)
         apiService = api
-        syncCoordinator = SyncCoordinator(modelContext: modelContext, api: api)
+        syncService = SyncService(modelContext: modelContext, api: api)
         if let uid = await authService?.currentUserId() {
             store.hydrate(userId: uid)
         }
