@@ -39,9 +39,18 @@ final class SyncService {
         Task { await runSyncLoop(userID: userID) }
     }
 
-    /// Full sync for pull-to-refresh. Blocks until complete; re-runs if queued.
+    /// Full sync for pull-to-refresh.
+    /// Runs in an unstructured Task so it survives the `.refreshable` scope.
     func syncAll(userID: String) async {
-        await runSyncLoop(userID: userID)
+        // Use withCheckedContinuation to block the refreshable indicator
+        // while the detached work runs, but the sync itself is not cancelled
+        // when the user lifts their finger.
+        await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                await runSyncLoop(userID: userID)
+                continuation.resume()
+            }
+        }
     }
 
     // MARK: - Sync Loop
@@ -52,9 +61,15 @@ final class SyncService {
             isSyncing = true
             let db = DatabaseService(modelContext: modelContext)
             do {
+                try Task.checkCancellation()
                 try await push(userID: userID, db: db)
                 try await pull(userID: userID, db: db)
                 lastSyncFailed = false
+            } catch is CancellationError {
+                // Task was cancelled (e.g. view disappeared) — not a real failure.
+                logger.info("Sync cancelled")
+            } catch let error as URLError where error.code == .cancelled {
+                logger.info("Sync network request cancelled")
             } catch {
                 lastSyncFailed = true
                 logger.error("Sync failed: \(error.localizedDescription)")
