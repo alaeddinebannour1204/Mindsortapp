@@ -20,7 +20,7 @@ final class EntryModel {
     var audioLocalPath: String?
 
     /// true while the entry hasn't been reviewed by the user (can still be reassigned).
-    var isPending: Bool
+    var isPending: Bool = true
 
     /// Timestamp when the user first saw this pending entry in the category view.
     /// Entries that were seen but not acted on auto-merge on next open.

@@ -21,7 +21,7 @@ final class CategoryModel {
     var syncStatusRaw: String
 
     /// The merged note body — all accepted entries concatenated into one continuous text.
-    var noteBody: String
+    var noteBody: String = ""
 
     /// Rich text data (archived NSAttributedString). When nil, falls back to noteBody plain text.
     var richNoteBody: Data?
