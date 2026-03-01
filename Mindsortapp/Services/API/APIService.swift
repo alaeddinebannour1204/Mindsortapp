@@ -95,6 +95,13 @@ final class APIService {
             let locale: String?
             let category_id: String?
         }
+        // Ensure we have a valid user session before calling the Edge Function.
+        do {
+            _ = try await client.auth.session
+        } catch {
+            throw NSError(domain: "APIService", code: 401,
+                          userInfo: [NSLocalizedDescriptionKey: "No active session. Please sign in again."])
+        }
         let row: ProcessEntryResponseRow = try await client.functions
             .invoke("process-entry", options: .init(body: Payload(transcript: transcript, locale: locale, category_id: categoryId)))
         return ProcessEntryResponse(
