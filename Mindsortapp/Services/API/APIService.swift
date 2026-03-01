@@ -17,7 +17,7 @@ final class APIService {
     func fetchCategories() async throws -> [Category] {
         let response: [CategoryRow] = try await client
             .from("categories")
-            .select("id, user_id, name, entry_count, is_archived, color, is_user_created, created_at, last_updated, latest_entry_title")
+            .select("id, user_id, name, entry_count, is_archived, color, is_user_created, created_at, last_updated, latest_entry_title, note_body")
             .eq("is_archived", value: false)
             .order("last_updated", ascending: false)
             .execute()
@@ -50,6 +50,14 @@ final class APIService {
             .execute()
     }
 
+    func updateCategoryNoteBody(id: String, noteBody: String) async throws {
+        try await client
+            .from("categories")
+            .update(["note_body": noteBody, "last_updated": ISO8601DateFormatter().string(from: Date())])
+            .eq("id", value: id)
+            .execute()
+    }
+
     func deleteCategory(id: String) async throws {
         try await client
             .from("categories")
@@ -61,7 +69,7 @@ final class APIService {
     func fetchAllEntries() async throws -> [Entry] {
         let response: [EntryRow] = try await client
             .from("entries")
-            .select("id, user_id, transcript, title, category_id, color, created_at, locale, audio_url")
+            .select("id, user_id, transcript, title, category_id, color, created_at, locale, audio_url, is_pending")
             .order("created_at", ascending: false)
             .execute()
             .value
@@ -152,6 +160,7 @@ private struct CategoryRow: Codable {
     let created_at: String
     let last_updated: String
     let latest_entry_title: String?
+    let note_body: String?
 
     static func empty(name: String, id: String = UUID().uuidString) -> CategoryRow {
         CategoryRow(
@@ -164,7 +173,8 @@ private struct CategoryRow: Codable {
             is_user_created: true,
             created_at: ISO8601DateFormatter().string(from: Date()),
             last_updated: ISO8601DateFormatter().string(from: Date()),
-            latest_entry_title: nil
+            latest_entry_title: nil,
+            note_body: nil
         )
     }
 
@@ -179,7 +189,8 @@ private struct CategoryRow: Codable {
             color: color,
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),
             lastUpdated: ISO8601DateFormatter().date(from: last_updated) ?? Date(),
-            syncStatus: .synced
+            syncStatus: .synced,
+            noteBody: note_body
         )
     }
 }
@@ -195,6 +206,7 @@ private struct EntryRow: Codable {
     let category_name: String?
     let locale: String?
     let audio_url: String?
+    let is_pending: Bool?
 
     func toEntry() -> Entry {
         Entry(
@@ -208,7 +220,8 @@ private struct EntryRow: Codable {
             categoryName: category_name,
             syncStatus: .synced,
             locale: locale,
-            audioURL: audio_url
+            audioURL: audio_url,
+            isPending: is_pending
         )
     }
 }

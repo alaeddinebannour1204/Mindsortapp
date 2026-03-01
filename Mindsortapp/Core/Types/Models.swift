@@ -25,6 +25,8 @@ struct Category: Codable, Identifiable, Sendable {
     let createdAt: Date
     var lastUpdated: Date
     var syncStatus: SyncStatus?
+    var noteBody: String?
+    var richNoteBody: String?
 }
 
 struct Entry: Codable, Identifiable, Sendable {
@@ -39,6 +41,7 @@ struct Entry: Codable, Identifiable, Sendable {
     var syncStatus: SyncStatus?
     var locale: String?
     var audioURL: String?
+    var isPending: Bool?
 }
 
 struct ProcessEntryResponse: Codable, Sendable {

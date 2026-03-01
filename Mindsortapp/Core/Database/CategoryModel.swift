@@ -20,6 +20,12 @@ final class CategoryModel {
     var latestEntryTitle: String?
     var syncStatusRaw: String
 
+    /// The merged note body — all accepted entries concatenated into one continuous text.
+    var noteBody: String
+
+    /// Rich text data (archived NSAttributedString). When nil, falls back to noteBody plain text.
+    var richNoteBody: Data?
+
     init(
         id: String,
         userID: String,
@@ -31,7 +37,9 @@ final class CategoryModel {
         createdAt: Date = Date(),
         lastUpdated: Date = Date(),
         latestEntryTitle: String? = nil,
-        syncStatus: SyncStatus = .synced
+        syncStatus: SyncStatus = .synced,
+        noteBody: String = "",
+        richNoteBody: Data? = nil
     ) {
         self.id = id
         self.userID = userID
@@ -44,6 +52,8 @@ final class CategoryModel {
         self.lastUpdated = lastUpdated
         self.latestEntryTitle = latestEntryTitle
         self.syncStatusRaw = syncStatus.rawValue
+        self.noteBody = noteBody
+        self.richNoteBody = richNoteBody
     }
 
     var syncStatus: SyncStatus {

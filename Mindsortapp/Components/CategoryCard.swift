@@ -24,6 +24,14 @@ struct CategoryCard: View {
         self.isSelected = isSelected
     }
 
+    private var notePreview: String {
+        let body = category.noteBody.trimmingCharacters(in: .whitespacesAndNewlines)
+        if body.isEmpty {
+            return "\(category.entryCount) thoughts"
+        }
+        return body
+    }
+
     var body: some View {
             HStack(spacing: Theme.Spacing.md) {
                 if let hex = category.color {
@@ -47,9 +55,10 @@ struct CategoryCard: View {
                                 .clipShape(Capsule())
                         }
                     }
-                    Text("\(category.entryCount) thoughts")
+                    Text(notePreview)
                         .font(Theme.Typography.caption())
                         .foregroundStyle(Theme.Colors.textSecondary)
+                        .lineLimit(2)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")

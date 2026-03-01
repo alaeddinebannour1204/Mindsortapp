@@ -28,7 +28,9 @@ CREATE TABLE categories (
     embedding_centroid DOUBLE PRECISION[],
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_updated TIMESTAMPTZ NOT NULL DEFAULT now(),
-    latest_entry_title TEXT
+    latest_entry_title TEXT,
+    note_body TEXT NOT NULL DEFAULT '',
+    rich_note_body JSONB
 );
 
 -- Index for user-scoped queries
@@ -85,7 +87,9 @@ CREATE TABLE entries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_updated TIMESTAMPTZ NOT NULL DEFAULT now(),
     locale TEXT,
-    category_name TEXT
+    category_name TEXT,
+    is_pending BOOLEAN NOT NULL DEFAULT true,
+    seen_at TIMESTAMPTZ
 );
 
 -- Indexes
