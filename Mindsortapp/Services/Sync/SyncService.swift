@@ -156,6 +156,8 @@ final class SyncService {
 
     private func pull(userID: String, db: DatabaseService) async throws {
         let serverCategories = try await api.fetchCategories()
+        let serverCategoryIDs = Set(serverCategories.map { $0.id })
+
         for cat in serverCategories {
             try db.upsertCategory(
                 id: cat.id,
@@ -166,9 +168,15 @@ final class SyncService {
                 lastUpdated: cat.lastUpdated
             )
         }
+
+        // Remove local synced categories that were deleted on the server
+        try db.removeSyncedCategoriesNotIn(serverIDs: serverCategoryIDs, userID: userID)
+
+        var allServerEntryIDs = Set<String>()
         for cat in serverCategories {
             let entries = try await api.fetchEntriesByCategory(categoryId: cat.id)
             for entry in entries {
+                allServerEntryIDs.insert(entry.id)
                 try db.upsertEntry(
                     id: entry.id,
                     userID: entry.userID,
@@ -180,5 +188,8 @@ final class SyncService {
                 )
             }
         }
+
+        // Remove local synced entries that were deleted on the server
+        try db.removeSyncedEntriesNotIn(serverIDs: allServerEntryIDs, userID: userID)
     }
 }

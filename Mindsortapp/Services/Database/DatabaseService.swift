@@ -306,4 +306,32 @@ final class DatabaseService {
         modelContext.delete(model)
         try modelContext.save()
     }
+
+    // MARK: - Pull reconciliation
+
+    /// Remove local synced categories that no longer exist on the server.
+    /// Only deletes `.synced` records — pending local changes are preserved.
+    func removeSyncedCategoriesNotIn(serverIDs: Set<String>, userID: String) throws {
+        let descriptor = FetchDescriptor<CategoryModel>(
+            predicate: #Predicate<CategoryModel> { $0.userID == userID && $0.syncStatusRaw == "synced" }
+        )
+        let localSynced = try modelContext.fetch(descriptor)
+        for cat in localSynced where !serverIDs.contains(cat.id) {
+            modelContext.delete(cat)
+        }
+        try modelContext.save()
+    }
+
+    /// Remove local synced entries that no longer exist on the server.
+    /// Only deletes `.synced` records — pending local changes are preserved.
+    func removeSyncedEntriesNotIn(serverIDs: Set<String>, userID: String) throws {
+        let descriptor = FetchDescriptor<EntryModel>(
+            predicate: #Predicate<EntryModel> { $0.userID == userID && $0.syncStatusRaw == "synced" }
+        )
+        let localSynced = try modelContext.fetch(descriptor)
+        for entry in localSynced where !serverIDs.contains(entry.id) {
+            modelContext.delete(entry)
+        }
+        try modelContext.save()
+    }
 }
