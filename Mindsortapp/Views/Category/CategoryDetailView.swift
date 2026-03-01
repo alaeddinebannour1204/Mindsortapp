@@ -21,6 +21,9 @@ struct CategoryDetailView: View {
     @State private var editingEntryId: String?
     @State private var errorMessage: String?
     @State private var saveTasks: [String: Task<Void, Never>] = [:]
+    @State private var pendingDeleteEntry: EntryModel?
+    @State private var pendingDeleteIndex: Int = 0
+    @State private var deleteTimer: Task<Void, Never>?
 
     private var db: DatabaseService { DatabaseService(modelContext: modelContext) }
 
@@ -113,6 +116,14 @@ struct CategoryDetailView: View {
                 .padding(.trailing, Theme.Spacing.lg)
             }
         }
+        .overlay(alignment: .bottom) {
+            if pendingDeleteEntry != nil {
+                UndoToast(message: "Entry deleted") {
+                    undoDelete()
+                }
+            }
+        }
+        .animation(.spring(response: 0.35), value: pendingDeleteEntry?.id)
         .sheet(isPresented: $showRecordSheet) {
             RecordView(categoryId: categoryId)
         }
@@ -212,12 +223,43 @@ struct CategoryDetailView: View {
     }
 
     private func handleDelete(entryId: String) {
-        guard let uid = store.userId else { return }
+        // If another delete is pending, commit it immediately before starting a new one.
+        if pendingDeleteEntry != nil { commitDelete() }
+
+        guard let index = entries.firstIndex(where: { $0.id == entryId }) else { return }
+        let entry = entries[index]
+        pendingDeleteEntry = entry
+        pendingDeleteIndex = index
+        withAnimation { entries.remove(at: index) }
+
+        deleteTimer?.cancel()
+        deleteTimer = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { commitDelete() }
+        }
+    }
+
+    private func undoDelete() {
+        deleteTimer?.cancel()
+        deleteTimer = nil
+        guard let entry = pendingDeleteEntry else { return }
+        let insertAt = min(pendingDeleteIndex, entries.count)
+        withAnimation { entries.insert(entry, at: insertAt) }
+        pendingDeleteEntry = nil
+    }
+
+    private func commitDelete() {
+        deleteTimer?.cancel()
+        deleteTimer = nil
+        guard let entry = pendingDeleteEntry, let uid = store.userId else {
+            pendingDeleteEntry = nil
+            return
+        }
+        pendingDeleteEntry = nil
         do {
-            try db.deleteEntry(id: entryId)
-            entries.removeAll { $0.id == entryId }
+            try db.deleteEntry(id: entry.id)
             syncService?.requestSync(userID: uid)
-            // Undo toast could be added here in a later refinement
         } catch {
             errorMessage = error.localizedDescription
         }

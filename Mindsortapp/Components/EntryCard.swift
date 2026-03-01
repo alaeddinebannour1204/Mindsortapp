@@ -79,6 +79,9 @@ struct EntryCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Theme.Colors.border, lineWidth: 1)
         )
+        .accessibilityElement(children: isEditing ? .contain : .combine)
+        .accessibilityLabel(isEditing ? nil : "\(localTitle.isEmpty ? "Untitled" : localTitle). \(localTranscript)")
+        .accessibilityHint(isEditing ? nil : "Tap to edit")
         .contextMenu {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete", systemImage: "trash")

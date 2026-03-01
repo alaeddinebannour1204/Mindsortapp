@@ -35,6 +35,7 @@ struct SearchBar: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(Theme.Colors.textTertiary)
                 }
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(Theme.Spacing.md)

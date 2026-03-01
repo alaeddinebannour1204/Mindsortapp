@@ -3,23 +3,30 @@
 //  Mindsortapp
 //
 //  Centralized theme for MindSort.
+//  Colors use semantic UIKit tokens → automatic dark mode.
+//  Typography uses UIFontMetrics → automatic Dynamic Type scaling.
 //
 
 import SwiftUI
+import UIKit
 
 enum Theme {
+    // MARK: - Colors (semantic — auto dark mode + high contrast)
+
     enum Colors {
-        static let background = Color(hex: "FAFAFA")
-        static let surface = Color(hex: "FFFFFF")
-        static let text = Color(hex: "1A1A1A")
-        static let textSecondary = Color(hex: "6B6B6B")
-        static let textTertiary = Color(hex: "9E9E9E")
-        static let border = Color(hex: "F0F0F0")
-        static let accent = Color(hex: "1A1A1A")
-        static let accentLight = Color(hex: "F5F5F5")
-        static let record = Color(hex: "FF3B30")
-        static let success = Color(hex: "34C759")
+        static let background = Color(.systemGroupedBackground)
+        static let surface = Color(.secondarySystemGroupedBackground)
+        static let text = Color(.label)
+        static let textSecondary = Color(.secondaryLabel)
+        static let textTertiary = Color(.tertiaryLabel)
+        static let border = Color(.separator)
+        static let accent = Color.blue
+        static let accentLight = Color(.tertiarySystemFill)
+        static let record = Color(.systemRed)
+        static let success = Color(.systemGreen)
     }
+
+    // MARK: - Spacing
 
     enum Spacing {
         static let xs: CGFloat = 4
@@ -30,18 +37,34 @@ enum Theme {
         static let xxl: CGFloat = 48
     }
 
+    // MARK: - Typography (Dynamic Type via UIFontMetrics)
+
     enum Typography {
-        static func h1() -> Font { .system(size: 28, weight: .bold) }
-        static func h2() -> Font { .system(size: 22, weight: .semibold) }
-        static func h3() -> Font { .system(size: 18, weight: .semibold) }
-        static func body() -> Font { .system(size: 16, weight: .regular) }
-        static func bodySmall() -> Font { .system(size: 14, weight: .regular) }
-        static func caption() -> Font { .system(size: 12, weight: .regular) }
-        static func label() -> Font { .system(size: 13, weight: .medium) }
+        static func h1() -> Font {
+            Font(UIFontMetrics(forTextStyle: .title1).scaledFont(for: .systemFont(ofSize: 28, weight: .bold)))
+        }
+        static func h2() -> Font {
+            Font(UIFontMetrics(forTextStyle: .title2).scaledFont(for: .systemFont(ofSize: 22, weight: .semibold)))
+        }
+        static func h3() -> Font {
+            Font(UIFontMetrics(forTextStyle: .title3).scaledFont(for: .systemFont(ofSize: 18, weight: .semibold)))
+        }
+        static func body() -> Font {
+            Font(UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 16, weight: .regular)))
+        }
+        static func bodySmall() -> Font {
+            Font(UIFontMetrics(forTextStyle: .subheadline).scaledFont(for: .systemFont(ofSize: 14, weight: .regular)))
+        }
+        static func caption() -> Font {
+            Font(UIFontMetrics(forTextStyle: .caption1).scaledFont(for: .systemFont(ofSize: 12, weight: .regular)))
+        }
+        static func label() -> Font {
+            Font(UIFontMetrics(forTextStyle: .footnote).scaledFont(for: .systemFont(ofSize: 13, weight: .medium)))
+        }
     }
 }
 
-// MARK: - Color hex initializer
+// MARK: - Color hex initializer (still needed for server-provided colors)
 
 extension Color {
     init(hex: String) {

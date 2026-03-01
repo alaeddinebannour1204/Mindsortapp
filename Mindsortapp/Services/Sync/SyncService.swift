@@ -22,6 +22,7 @@ final class SyncService {
     private var pendingSync = false
 
     var syncing: Bool { isSyncing }
+    var lastSyncFailed: Bool = false
 
     init(modelContext: ModelContext, api: APIService, store: AppStore) {
         self.modelContext = modelContext
@@ -53,7 +54,9 @@ final class SyncService {
             do {
                 try await push(userID: userID, db: db)
                 try await pull(userID: userID, db: db)
+                lastSyncFailed = false
             } catch {
+                lastSyncFailed = true
                 logger.error("Sync failed: \(error.localizedDescription)")
             }
             isSyncing = false

@@ -31,6 +31,7 @@ struct RootView: View {
                 AuthConfigErrorView()
             }
         }
+        .environment(\.authService, authService)
         .environment(\.apiService, apiService)
         .environment(\.syncService, syncService)
         .task {
