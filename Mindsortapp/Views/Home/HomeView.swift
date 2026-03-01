@@ -88,7 +88,7 @@ struct HomeView: View {
 
                         ForEach(categoryModels.filter { $0.userID == store.userId ?? "" }) { cat in
                             NavigationLink {
-                                CategoryDetailView(categoryId: cat.id)
+                                NoteView(categoryId: cat.id)
                             } label: {
                                 CategoryCard(
                                     category: cat,

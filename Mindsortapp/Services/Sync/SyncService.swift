@@ -150,15 +150,16 @@ final class SyncService {
             logger.error("Failed to fetch pending entries: \(error.localizedDescription)")
         }
 
-        // 3. Pending update categories
+        // 3. Pending update categories (name + note body)
         do {
             let updateCats = try db.getPendingUpdateCategories(userID: userID)
             for cat in updateCats {
                 do {
                     try await api.renameCategory(id: cat.id, name: cat.name)
+                    try await api.updateCategoryNoteBody(id: cat.id, noteBody: cat.noteBody)
                     try db.markCategorySynced(id: cat.id)
                 } catch {
-                    logger.error("Failed to rename category \(cat.id): \(error.localizedDescription)")
+                    logger.error("Failed to update category \(cat.id): \(error.localizedDescription)")
                 }
             }
         } catch {
@@ -223,7 +224,8 @@ final class SyncService {
                 name: cat.name,
                 entryCount: cat.entryCount,
                 isUserCreated: cat.isUserCreated,
-                lastUpdated: cat.lastUpdated
+                lastUpdated: cat.lastUpdated,
+                noteBody: cat.noteBody
             )
         }
 
@@ -240,7 +242,8 @@ final class SyncService {
                 title: entry.title,
                 categoryID: entry.categoryID,
                 createdAt: entry.createdAt,
-                locale: entry.locale
+                locale: entry.locale,
+                isPending: entry.isPending
             )
         }
 

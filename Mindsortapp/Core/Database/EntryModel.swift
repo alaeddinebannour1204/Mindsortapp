@@ -19,6 +19,13 @@ final class EntryModel {
     var locale: String?
     var audioLocalPath: String?
 
+    /// true while the entry hasn't been reviewed by the user (can still be reassigned).
+    var isPending: Bool
+
+    /// Timestamp when the user first saw this pending entry in the category view.
+    /// Entries that were seen but not acted on auto-merge on next open.
+    var seenAt: Date?
+
     init(
         id: String,
         userID: String,
@@ -29,7 +36,9 @@ final class EntryModel {
         createdAt: Date = Date(),
         syncStatus: SyncStatus = .synced,
         locale: String? = nil,
-        audioLocalPath: String? = nil
+        audioLocalPath: String? = nil,
+        isPending: Bool = true,
+        seenAt: Date? = nil
     ) {
         self.id = id
         self.userID = userID
@@ -41,6 +50,8 @@ final class EntryModel {
         self.syncStatusRaw = syncStatus.rawValue
         self.locale = locale
         self.audioLocalPath = audioLocalPath
+        self.isPending = isPending
+        self.seenAt = seenAt
     }
 
     var syncStatus: SyncStatus {
