@@ -17,7 +17,7 @@ final class APIService {
     func fetchCategories() async throws -> [Category] {
         let response: [CategoryRow] = try await client
             .from("categories")
-            .select()
+            .select("id, user_id, name, entry_count, is_archived, color, is_user_created, created_at, last_updated, latest_entry_title")
             .eq("is_archived", value: false)
             .order("last_updated", ascending: false)
             .execute()
@@ -61,7 +61,7 @@ final class APIService {
     func fetchEntriesByCategory(categoryId: String) async throws -> [Entry] {
         let response: [EntryRow] = try await client
             .from("entries")
-            .select()
+            .select("id, user_id, transcript, title, category_id, color, created_at, locale")
             .eq("category_id", value: categoryId)
             .order("created_at", ascending: false)
             .execute()

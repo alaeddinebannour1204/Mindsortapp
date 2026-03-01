@@ -113,7 +113,12 @@ struct HomeView: View {
         .navigationTitle("MindSort")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await refresh()
+            // Fire sync in its own Task so it is not cancelled if the view
+            // disappears (e.g. navigation push while sync is still running).
+            if let uid = store.userId {
+                syncCoordinator?.requestSync(userID: uid)
+            }
+            await loadData()
         }
     }
 

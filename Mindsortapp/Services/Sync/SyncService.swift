@@ -179,18 +179,22 @@ final class SyncService {
 
         var allServerEntryIDs = Set<String>()
         for cat in serverCategories {
-            let entries = try await api.fetchEntriesByCategory(categoryId: cat.id)
-            for entry in entries {
-                allServerEntryIDs.insert(entry.id)
-                try db.upsertEntry(
-                    id: entry.id,
-                    userID: entry.userID,
-                    transcript: entry.transcript,
-                    title: entry.title,
-                    categoryID: entry.categoryID,
-                    createdAt: entry.createdAt,
-                    locale: entry.locale
-                )
+            do {
+                let entries = try await api.fetchEntriesByCategory(categoryId: cat.id)
+                for entry in entries {
+                    allServerEntryIDs.insert(entry.id)
+                    try db.upsertEntry(
+                        id: entry.id,
+                        userID: entry.userID,
+                        transcript: entry.transcript,
+                        title: entry.title,
+                        categoryID: entry.categoryID,
+                        createdAt: entry.createdAt,
+                        locale: entry.locale
+                    )
+                }
+            } catch {
+                logger.error("Failed to pull entries for category \(cat.id): \(error.localizedDescription)")
             }
         }
 
