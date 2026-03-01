@@ -162,14 +162,12 @@ private struct CategoryRow: Codable {
             id: id,
             userID: user_id,
             name: name,
-            embeddingCentroid: nil,
             entryCount: entry_count ?? 0,
             isArchived: is_archived ?? false,
             isUserCreated: is_user_created ?? true,
             color: color,
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),
             lastUpdated: ISO8601DateFormatter().date(from: last_updated) ?? Date(),
-            latestEntryTitle: latest_entry_title,
             syncStatus: .synced
         )
     }
@@ -193,7 +191,6 @@ private struct EntryRow: Codable {
             transcript: transcript,
             title: title,
             categoryID: category_id,
-            embeddingVector: nil,
             color: color,
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),
             categoryName: category_name,

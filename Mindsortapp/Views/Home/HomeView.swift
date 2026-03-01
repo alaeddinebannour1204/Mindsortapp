@@ -13,8 +13,6 @@ struct HomeView: View {
     @State private var showCreateCategory = false
     @State private var showRecordSheet = false
     @State private var newCategoryName = ""
-    @State private var isRefreshing = false
-    @State private var authService: AuthService?
     @Query private var categoryModels: [CategoryModel]
 
     private var db: DatabaseService { DatabaseService(modelContext: modelContext) }
@@ -153,16 +151,11 @@ struct HomeView: View {
     }
 
     private func refresh() async {
-        isRefreshing = true
-        guard let uid = store.userId else {
-            isRefreshing = false
-            return
-        }
+        guard let uid = store.userId else { return }
         if let sync = syncService {
             await sync.syncAll(userID: uid)
         }
         await loadData()
-        isRefreshing = false
     }
 
     private func saveNewCategory() {
