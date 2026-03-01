@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct RecordButton: View {
+    @Environment(AppStore.self) private var store
     let isRecording: Bool
     let size: CGFloat
     let onTap: () -> Void
@@ -29,7 +30,7 @@ struct RecordButton: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isRecording ? "Stop recording" : "Start recording")
-        .accessibilityHint(isRecording ? "Stops and saves your thought" : "Begins voice recording")
+        .accessibilityLabel(isRecording ? store.t("recordButton.stop") : store.t("recordButton.start"))
+        .accessibilityHint(isRecording ? store.t("recordButton.stopHint") : store.t("recordButton.startHint"))
     }
 }

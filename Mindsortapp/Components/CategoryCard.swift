@@ -7,6 +7,7 @@ import SwiftUI
 import SwiftData
 
 struct CategoryCard: View {
+    @Environment(AppStore.self) private var store
     let category: CategoryModel
     let inboxCount: Int?
     let showNewBadge: Bool
@@ -37,7 +38,7 @@ struct CategoryCard: View {
                             .font(Theme.Typography.h3())
                             .foregroundStyle(Theme.Colors.text)
                         if showNewBadge {
-                            Text("NEW")
+                            Text(store.t("categoryCard.new"))
                                 .font(Theme.Typography.caption())
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.white)
@@ -47,7 +48,7 @@ struct CategoryCard: View {
                                 .clipShape(Capsule())
                         }
                     }
-                    Text("\(category.entryCount) thoughts")
+                    Text("\(category.entryCount) \(store.t("categoryCard.thoughts"))")
                         .font(Theme.Typography.caption())
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
@@ -64,6 +65,6 @@ struct CategoryCard: View {
                     .stroke(isSelected ? Theme.Colors.accent : Theme.Colors.border, lineWidth: isSelected ? 2 : 1)
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(category.name), \(category.entryCount) thoughts\(showNewBadge ? ", new" : "")")
+            .accessibilityLabel("\(category.name), \(category.entryCount) \(store.t("categoryCard.thoughts"))\(showNewBadge ? ", \(store.t("categoryCard.new").lowercased())" : "")")
     }
 }

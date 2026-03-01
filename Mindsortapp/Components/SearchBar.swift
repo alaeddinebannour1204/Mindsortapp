@@ -6,13 +6,14 @@
 import SwiftUI
 
 struct SearchBar: View {
+    @Environment(AppStore.self) private var store
     @Binding var text: String
     let placeholder: String
     let onSubmit: () -> Void
 
     init(
         text: Binding<String>,
-        placeholder: String = "Search",
+        placeholder: String = "",
         onSubmit: @escaping () -> Void = {}
     ) {
         _text = text
@@ -24,7 +25,7 @@ struct SearchBar: View {
         HStack(spacing: Theme.Spacing.sm) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(Theme.Colors.textTertiary)
-            TextField(placeholder, text: $text)
+            TextField(placeholder.isEmpty ? store.t("common.search") : placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .submitLabel(.search)
                 .onSubmit(onSubmit)
@@ -35,7 +36,7 @@ struct SearchBar: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(Theme.Colors.textTertiary)
                 }
-                .accessibilityLabel("Clear search")
+                .accessibilityLabel(store.t("searchBar.clear"))
             }
         }
         .padding(Theme.Spacing.md)

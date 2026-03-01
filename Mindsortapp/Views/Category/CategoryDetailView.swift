@@ -30,9 +30,9 @@ struct CategoryDetailView: View {
     private var isInbox: Bool { categoryId == "__inbox__" }
 
     private var titleText: String {
-        if isInbox { return "Inbox" }
+        if isInbox { return store.t("home.inbox") }
         if !categoryName.isEmpty { return categoryName }
-        return "Category"
+        return store.t("category.default")
     }
 
     private var filteredEntries: [EntryModel] {
@@ -54,9 +54,9 @@ struct CategoryDetailView: View {
                     .background(Theme.Colors.background)
             } else if filteredEntries.isEmpty {
                 VStack(spacing: Theme.Spacing.md) {
-                    Text("No thoughts yet")
+                    Text(store.t("category.noThoughts"))
                         .font(Theme.Typography.h2())
-                    Text(isInbox ? "New recordings will appear here until they are categorized." : "Tap + or use the mic to add a new thought.")
+                    Text(isInbox ? store.t("category.inboxHint") : store.t("category.addHint"))
                         .font(Theme.Typography.bodySmall())
                         .foregroundStyle(Theme.Colors.textSecondary)
                         .multilineTextAlignment(.center)
@@ -118,7 +118,7 @@ struct CategoryDetailView: View {
         }
         .overlay(alignment: .bottom) {
             if pendingDeleteEntry != nil {
-                UndoToast(message: "Entry deleted") {
+                UndoToast(message: store.t("category.entryDeleted")) {
                     undoDelete()
                 }
             }
@@ -127,8 +127,8 @@ struct CategoryDetailView: View {
         .sheet(isPresented: $showRecordSheet) {
             RecordView(categoryId: categoryId)
         }
-        .alert("Error", isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(store.t("common.error"), isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button(store.t("common.ok"), role: .cancel) {}
         } message: {
             if let msg = errorMessage {
                 Text(msg)
@@ -265,4 +265,3 @@ struct CategoryDetailView: View {
         }
     }
 }
-

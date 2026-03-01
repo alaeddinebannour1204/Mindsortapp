@@ -12,7 +12,7 @@ struct RecordView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.syncService) private var syncService
 
-    @State private var selectedLocale = "en-US"
+    @State private var selectedLocale: String
     @State private var isRecording = false
     @State private var recordingStartDate: Date?
     @State private var saved = false
@@ -35,7 +35,7 @@ struct RecordView: View {
             .padding(Theme.Spacing.lg)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.Colors.background)
-            .navigationTitle("New thought")
+            .navigationTitle(store.t("record.newThought"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -49,12 +49,12 @@ struct RecordView: View {
                                 .font(Theme.Typography.bodySmall())
                         }
                         .disabled(isRecording)
-                        .accessibilityLabel("Recording language: \(localeName(for: selectedLocale))")
+                        .accessibilityLabel("\(store.t("record.languageLabel")): \(localeName(for: selectedLocale))")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if !saved {
-                        Button("Close") {
+                        Button(store.t("common.close")) {
                             if isRecording {
                                 recordingService.stopRecording()
                                 transcriptionService.stopRecognition()
@@ -64,18 +64,18 @@ struct RecordView: View {
                     }
                 }
             }
-            .alert("Permission needed", isPresented: $permissionDenied) {
-                Button("Open Settings") {
+            .alert(store.t("record.permissionNeeded"), isPresented: $permissionDenied) {
+                Button(store.t("record.openSettings")) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
                 }
-                Button("Cancel", role: .cancel) { dismiss() }
+                Button(store.t("common.cancel"), role: .cancel) { dismiss() }
             } message: {
-                Text("Microphone and speech recognition are required to record thoughts. Enable them in Settings.")
+                Text(store.t("record.permissionMessage"))
             }
-            .alert("Error", isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-                Button("OK", role: .cancel) {}
+            .alert(store.t("common.error"), isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+                Button(store.t("common.ok"), role: .cancel) {}
             } message: {
                 if let msg = errorMessage { Text(msg) }
             }
@@ -92,7 +92,7 @@ struct RecordView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(Theme.Colors.success)
-            Text("Thought saved!")
+            Text(store.t("record.thoughtSaved"))
                 .font(Theme.Typography.h2())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -113,11 +113,11 @@ struct RecordView: View {
                         .foregroundStyle(Theme.Colors.text)
                 }
 
-                Text("Recording…")
+                Text(store.t("record.recording"))
                     .font(Theme.Typography.body())
                     .foregroundStyle(Theme.Colors.textSecondary)
             } else {
-                Text("Preparing…")
+                Text(store.t("record.preparing"))
                     .font(Theme.Typography.h2())
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
@@ -137,6 +137,10 @@ struct RecordView: View {
 
     init(categoryId: String? = nil) {
         self.categoryId = (categoryId == "__inbox__" || categoryId?.isEmpty == true) ? nil : categoryId
+        // Read persisted recording language from UserDefaults (AppStore may not be
+        // available yet during init, so read directly).
+        let persisted = UserDefaults.standard.string(forKey: "defaultThoughtLanguage") ?? "en-US"
+        _selectedLocale = State(initialValue: persisted)
     }
 
     // MARK: - Helpers
@@ -193,12 +197,12 @@ struct RecordView: View {
         let audioFileSize = recordingService.audioFileURL
             .flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int } ?? 0
         if transcript.isEmpty && audioFileSize < 10_000 {
-            errorMessage = "No speech detected. Try again."
+            errorMessage = store.t("record.noSpeech")
             return
         }
 
         guard let uid = store.userId else {
-            errorMessage = "Not signed in."
+            errorMessage = store.t("record.notSignedIn")
             return
         }
         do {

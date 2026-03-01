@@ -41,7 +41,7 @@ struct AuthView: View {
                         .font(Theme.Typography.h1())
                         .foregroundStyle(Theme.Colors.text)
 
-                    Text("Speak naturally. Your thoughts sort themselves.")
+                    Text(store.t("auth.tagline"))
                         .font(Theme.Typography.bodySmall())
                         .foregroundStyle(Theme.Colors.textSecondary)
                         .multilineTextAlignment(.center)
@@ -49,7 +49,7 @@ struct AuthView: View {
                 .padding(.bottom, Theme.Spacing.xl)
 
                 VStack(spacing: Theme.Spacing.md) {
-                    TextField("Email", text: $email)
+                    TextField(store.t("auth.email"), text: $email)
                         .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -62,7 +62,7 @@ struct AuthView: View {
                                 .stroke(Theme.Colors.border, lineWidth: 1)
                         )
 
-                    SecureField("Password", text: $password)
+                    SecureField(store.t("auth.password"), text: $password)
                         .textContentType(isSignUp ? .newPassword : .password)
                         .padding(Theme.Spacing.md)
                         .background(Theme.Colors.surface)
@@ -80,7 +80,7 @@ struct AuthView: View {
                                 ProgressView()
                                     .tint(.white)
                             } else {
-                                Text(isSignUp ? "Sign Up" : "Sign In")
+                                Text(isSignUp ? store.t("auth.signUp") : store.t("auth.signIn"))
                                     .font(Theme.Typography.h3())
                             }
                         }
@@ -96,7 +96,7 @@ struct AuthView: View {
                         isSignUp.toggle()
                         errorMessage = nil
                     } label: {
-                        Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                        Text(isSignUp ? store.t("auth.switchToSignIn") : store.t("auth.switchToSignUp"))
                             .font(Theme.Typography.bodySmall())
                             .foregroundStyle(Theme.Colors.accent)
                     }
@@ -108,8 +108,8 @@ struct AuthView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.Colors.background)
-        .alert("Error", isPresented: $showError) {
-            Button("OK", role: .cancel) {}
+        .alert(store.t("common.error"), isPresented: $showError) {
+            Button(store.t("common.ok"), role: .cancel) {}
         } message: {
             if let msg = errorMessage {
                 Text(msg)

@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct UndoToast: View {
+    @Environment(AppStore.self) private var store
     let message: String
     let onUndo: () -> Void
 
@@ -15,11 +16,11 @@ struct UndoToast: View {
                 .font(Theme.Typography.bodySmall())
                 .foregroundStyle(.white)
             Spacer()
-            Button("Undo", action: onUndo)
+            Button(store.t("common.undo"), action: onUndo)
                 .font(Theme.Typography.label())
                 .fontWeight(.semibold)
                 .foregroundStyle(.white)
-                .accessibilityHint("Restores the deleted entry")
+                .accessibilityHint(store.t("undo.hint"))
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm + 2)
@@ -29,6 +30,6 @@ struct UndoToast: View {
         .padding(.bottom, Theme.Spacing.xxl + Theme.Spacing.md)
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(message). Undo available.")
+        .accessibilityLabel("\(message). \(store.t("undo.available"))")
     }
 }

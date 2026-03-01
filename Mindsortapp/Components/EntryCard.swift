@@ -7,6 +7,7 @@ import SwiftUI
 import SwiftData
 
 struct EntryCard: View {
+    @Environment(AppStore.self) private var store
     let entry: EntryModel
     let isEditing: Bool
     let onChange: (String, String) -> Void
@@ -43,13 +44,13 @@ struct EntryCard: View {
                 .buttonStyle(.plain)
 
                 if isEditing {
-                    TextField("Title", text: $localTitle)
+                    TextField(store.t("entry.title"), text: $localTitle)
                         .font(Theme.Typography.h3())
                         .onChange(of: localTitle) { _ in
                             notifyChange()
                         }
                 } else {
-                    Text(localTitle.isEmpty ? "Untitled" : localTitle)
+                    Text(localTitle.isEmpty ? store.t("entry.untitled") : localTitle)
                         .font(Theme.Typography.h3())
                         .foregroundStyle(Theme.Colors.text)
                         .lineLimit(1)
@@ -66,7 +67,7 @@ struct EntryCard: View {
                         notifyChange()
                     }
             } else {
-                Text(localTranscript.isEmpty ? "Empty note" : localTranscript)
+                Text(localTranscript.isEmpty ? store.t("entry.empty") : localTranscript)
                     .font(Theme.Typography.body())
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .lineLimit(3)
@@ -80,16 +81,16 @@ struct EntryCard: View {
                 .stroke(Theme.Colors.border, lineWidth: 1)
         )
         .accessibilityElement(children: isEditing ? .contain : .combine)
-        .accessibilityLabel(isEditing ? "" : "\(localTitle.isEmpty ? "Untitled" : localTitle). \(localTranscript)")
-        .accessibilityHint(isEditing ? "" : "Tap to edit")
+        .accessibilityLabel(isEditing ? "" : "\(localTitle.isEmpty ? store.t("entry.untitled") : localTitle). \(localTranscript)")
+        .accessibilityHint(isEditing ? "" : store.t("entry.tapToEdit"))
         .contextMenu {
             Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
+                Label(store.t("common.delete"), systemImage: "trash")
             }
         }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
+                Label(store.t("common.delete"), systemImage: "trash")
             }
         }
     }
@@ -105,4 +106,3 @@ struct EntryCard: View {
         onChange(localTitle, localTranscript)
     }
 }
-

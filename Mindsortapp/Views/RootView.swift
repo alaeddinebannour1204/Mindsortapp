@@ -20,7 +20,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if !checkedSession {
-                ProgressView("Loading…")
+                ProgressView(store.t("common.loading"))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Theme.Colors.background)
             } else if let userId = store.userId, !userId.isEmpty {
@@ -28,7 +28,7 @@ struct RootView: View {
             } else if let auth = authService {
                 AuthView(authService: auth)
             } else {
-                AuthConfigErrorView()
+                AuthConfigErrorView(store: store)
             }
         }
         .environment(\.authService, authService)
@@ -61,14 +61,16 @@ struct RootView: View {
 
 /// Shown when Supabase URL/key are not configured
 private struct AuthConfigErrorView: View {
+    let store: AppStore
+
     var body: some View {
         VStack(spacing: Theme.Spacing.lg) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundStyle(Theme.Colors.textTertiary)
-            Text("Supabase not configured")
+            Text(store.t("config.notConfigured"))
                 .font(Theme.Typography.h2())
-            Text("Set SUPABASE_URL and SUPABASE_ANON_KEY in Edit Scheme → Run → Environment Variables.")
+            Text(store.t("config.instructions"))
                 .font(Theme.Typography.bodySmall())
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .multilineTextAlignment(.center)

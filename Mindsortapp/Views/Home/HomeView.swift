@@ -34,7 +34,7 @@ struct HomeView: View {
                         HStack(spacing: Theme.Spacing.sm) {
                             ProgressView()
                                 .scaleEffect(0.7)
-                            Text("Syncing...")
+                            Text(store.t("home.syncing"))
                                 .font(Theme.Typography.caption())
                                 .foregroundStyle(Theme.Colors.textSecondary)
                         }
@@ -45,13 +45,13 @@ struct HomeView: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(Theme.Typography.caption())
                                 .foregroundStyle(Theme.Colors.record)
-                            Text("Sync failed — pull to retry")
+                            Text(store.t("home.syncFailed"))
                                 .font(Theme.Typography.caption())
                                 .foregroundStyle(Theme.Colors.textSecondary)
                         }
                         .padding(.horizontal, Theme.Spacing.md)
                         .transition(.opacity)
-                        .accessibilityLabel("Sync failed. Pull down to retry.")
+                        .accessibilityLabel(store.t("home.syncFailed"))
                     }
 
                     LazyVStack(spacing: Theme.Spacing.md) {
@@ -61,7 +61,7 @@ struct HomeView: View {
                             HStack {
                                 Image(systemName: "magnifyingglass")
                                     .foregroundStyle(Theme.Colors.textTertiary)
-                                Text("Search thoughts...")
+                                Text(store.t("home.searchThoughts"))
                                     .foregroundStyle(Theme.Colors.textSecondary)
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -76,13 +76,13 @@ struct HomeView: View {
                                     .stroke(Theme.Colors.border, lineWidth: 1)
                             )
                         }
-                        .accessibilityLabel("Search thoughts")
+                        .accessibilityLabel(store.t("home.searchThoughts"))
 
                         if store.inboxCount > 0 {
                             NavigationLink {
                                 CategoryDetailView(categoryId: "__inbox__")
                             } label: {
-                                InboxCard(count: store.inboxCount)
+                                InboxCard(count: store.inboxCount, store: store)
                             }
                         }
 
@@ -101,12 +101,12 @@ struct HomeView: View {
                                     renameCategoryName = cat.name
                                     renamingCategory = cat
                                 } label: {
-                                    Label("Rename", systemImage: "pencil")
+                                    Label(store.t("common.rename"), systemImage: "pencil")
                                 }
                                 Button(role: .destructive) {
                                     deletingCategory = cat
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label(store.t("common.delete"), systemImage: "trash")
                                 }
                             }
                         }
@@ -128,13 +128,13 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "plus")
                         }
-                        .accessibilityLabel("Create category")
+                        .accessibilityLabel(store.t("home.createCategory"))
                         NavigationLink {
                             SettingsView()
                         } label: {
                             Image(systemName: "person.circle")
                         }
-                        .accessibilityLabel("Settings")
+                        .accessibilityLabel(store.t("common.settings"))
                     }
                 }
             }
@@ -150,32 +150,30 @@ struct HomeView: View {
             .sheet(isPresented: $showCreateCategory) {
                 createCategorySheet
             }
-            .alert("Rename Category", isPresented: .init(
+            .alert(store.t("home.renameCategory"), isPresented: .init(
                 get: { renamingCategory != nil },
                 set: { if !$0 { renamingCategory = nil } }
             )) {
-                TextField("Name", text: $renameCategoryName)
-                Button("Cancel", role: .cancel) { renamingCategory = nil }
-                Button("Save") { renameCategory() }
+                TextField(store.t("common.name"), text: $renameCategoryName)
+                Button(store.t("common.cancel"), role: .cancel) { renamingCategory = nil }
+                Button(store.t("common.save")) { renameCategory() }
             }
             .confirmationDialog(
-                "Delete \"\(deletingCategory?.name ?? "")\"?",
+                "\(store.t("common.delete")) \"\(deletingCategory?.name ?? "")\"?",
                 isPresented: .init(
                     get: { deletingCategory != nil },
                     set: { if !$0 { deletingCategory = nil } }
                 ),
                 titleVisibility: .visible
             ) {
-                Button("Delete", role: .destructive) { deleteCategory() }
+                Button(store.t("common.delete"), role: .destructive) { deleteCategory() }
             } message: {
-                Text("This will delete the category and all its thoughts. This cannot be undone.")
+                Text(store.t("home.deleteConfirmMessage"))
             }
         }
         .navigationTitle("MindSort")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            // Fire sync in its own Task so it is not cancelled if the view
-            // disappears (e.g. navigation push while sync is still running).
             if let uid = store.userId {
                 syncService?.requestSync(userID: uid)
             }
@@ -186,16 +184,16 @@ struct HomeView: View {
     private var createCategorySheet: some View {
         NavigationStack {
             Form {
-                TextField("Category name", text: $newCategoryName)
+                TextField(store.t("home.categoryName"), text: $newCategoryName)
             }
-            .navigationTitle("New Category")
+            .navigationTitle(store.t("home.newCategory"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showCreateCategory = false }
+                    Button(store.t("common.cancel")) { showCreateCategory = false }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(store.t("common.save")) {
                         saveNewCategory()
                         showCreateCategory = false
                     }
@@ -265,6 +263,7 @@ struct HomeView: View {
 
 private struct InboxCard: View {
     let count: Int
+    let store: AppStore
 
     var body: some View {
             HStack {
@@ -272,10 +271,10 @@ private struct InboxCard: View {
                     .font(.title2)
                     .foregroundStyle(Theme.Colors.textSecondary)
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text("Inbox")
+                    Text(store.t("home.inbox"))
                         .font(Theme.Typography.h3())
                         .foregroundStyle(Theme.Colors.text)
-                    Text("\(count) uncategorized")
+                    Text("\(count) \(store.t("home.uncategorized"))")
                         .font(Theme.Typography.caption())
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
@@ -291,7 +290,7 @@ private struct InboxCard: View {
                     .stroke(Theme.Colors.border, lineWidth: 1)
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Inbox, \(count) uncategorized thoughts")
+            .accessibilityLabel("\(store.t("home.inbox")), \(count) \(store.t("home.uncategorized"))")
     }
 }
 

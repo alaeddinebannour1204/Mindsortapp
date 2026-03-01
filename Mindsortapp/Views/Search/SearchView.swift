@@ -22,7 +22,7 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.lg) {
-            SearchBar(text: $query, placeholder: "Search thoughts...") {
+            SearchBar(text: $query, placeholder: store.t("home.searchThoughts")) {
                 Task { await performSearch() }
             }
 
@@ -31,9 +31,9 @@ struct SearchView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if remoteResults.isEmpty && localResults.isEmpty {
                 VStack(spacing: Theme.Spacing.sm) {
-                    Text("Search by meaning")
+                    Text(store.t("search.byMeaning"))
                         .font(Theme.Typography.h2())
-                    Text("Type a few words or a short sentence, then tap search.")
+                    Text(store.t("search.hint"))
                         .font(Theme.Typography.bodySmall())
                         .foregroundStyle(Theme.Colors.textSecondary)
                         .multilineTextAlignment(.center)
@@ -46,7 +46,7 @@ struct SearchView: View {
                         if !remoteResults.isEmpty {
                             ForEach(remoteResults, id: \.id) { entry in
                                 SearchResultRow(
-                                    title: entry.title ?? "Untitled",
+                                    title: entry.title ?? store.t("entry.untitled"),
                                     transcript: entry.transcript,
                                     categoryName: entry.categoryName
                                 )
@@ -54,7 +54,7 @@ struct SearchView: View {
                         } else {
                             ForEach(localResults) { entry in
                                 SearchResultRow(
-                                    title: entry.title ?? "Untitled",
+                                    title: entry.title ?? store.t("entry.untitled"),
                                     transcript: entry.transcript,
                                     categoryName: nil
                                 )
@@ -67,10 +67,10 @@ struct SearchView: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.top, Theme.Spacing.md)
-        .navigationTitle("Search")
+        .navigationTitle(store.t("common.search"))
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Error", isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(store.t("common.error"), isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button(store.t("common.ok"), role: .cancel) {}
         } message: {
             if let msg = errorMessage {
                 Text(msg)
@@ -149,4 +149,3 @@ private struct SearchResultRow: View {
         )
     }
 }
-

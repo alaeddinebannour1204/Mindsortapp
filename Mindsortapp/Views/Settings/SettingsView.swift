@@ -14,12 +14,18 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var store = store
         Form {
-            Section("Account") {
-                LabeledContent("User ID", value: store.userId ?? "Unknown")
+            Section(store.t("settings.account")) {
+                LabeledContent(store.t("settings.userId"), value: store.userId ?? store.t("settings.unknown"))
             }
 
-            Section("Preferences") {
-                Picker("Recording language", selection: $store.defaultThoughtLanguage) {
+            Section(store.t("settings.preferences")) {
+                Picker(store.t("settings.appLanguage"), selection: $store.appLanguage) {
+                    ForEach(L.appLanguages, id: \.code) { lang in
+                        Text(lang.name).tag(lang.code)
+                    }
+                }
+
+                Picker(store.t("settings.recordingLanguage"), selection: $store.defaultThoughtLanguage) {
                     ForEach(TranscriptionService.supportedLocales, id: \.0) { code, name in
                         Text(name).tag(code)
                     }
@@ -32,23 +38,23 @@ struct SettingsView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Text("Sign Out")
+                        Text(store.t("settings.signOut"))
                         Spacer()
                     }
                 }
             }
         }
-        .navigationTitle("Settings")
+        .navigationTitle(store.t("common.settings"))
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Sign out?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
-            Button("Sign Out", role: .destructive) {
+        .confirmationDialog(store.t("settings.signOutConfirm"), isPresented: $showSignOutConfirm, titleVisibility: .visible) {
+            Button(store.t("settings.signOut"), role: .destructive) {
                 signOut()
             }
         } message: {
-            Text("Your data is saved on the server. You can sign back in anytime.")
+            Text(store.t("settings.signOutMessage"))
         }
-        .alert("Error", isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) {}
+        .alert(store.t("common.error"), isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button(store.t("common.ok"), role: .cancel) {}
         } message: {
             if let msg = errorMessage { Text(msg) }
         }
