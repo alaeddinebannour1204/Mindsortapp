@@ -2,53 +2,66 @@
 //  SyncService.swift
 //  Mindsortapp
 //
-//  Offline-first sync: push pending changes, then pull from server.
+//  Offline-first sync with request queuing so process-entry is never skipped.
 //
 
 import Foundation
 import os
 import SwiftData
+import SwiftUI
 
 private let logger = Logger(subsystem: "Mindsortapp", category: "Sync")
 
 @MainActor
+@Observable
 final class SyncService {
     private let modelContext: ModelContext
     private let api: APIService
     private var isSyncing = false
+    private var pendingSync = false
+
+    var syncing: Bool { isSyncing }
 
     init(modelContext: ModelContext, api: APIService) {
         self.modelContext = modelContext
         self.api = api
     }
 
-    var syncing: Bool { isSyncing }
-
-    /// Full sync: push then pull. Call from pull-to-refresh or after login.
-    func syncAll(userID: String) async {
-        guard !isSyncing else { return }
-        isSyncing = true
-        defer { isSyncing = false }
-        let db = DatabaseService(modelContext: modelContext)
-        do {
-            try await push(userID: userID, db: db)
-            try await pull(userID: userID, db: db)
-        } catch {
-            logger.error("Sync failed: \(error.localizedDescription)")
+    /// Enqueue a sync. If one is running, run again when it completes.
+    func requestSync(userID: String) {
+        if isSyncing {
+            pendingSync = true
+            return
         }
+        Task { await runSyncLoop(userID: userID) }
     }
 
-    /// Fire-and-forget sync after a local write. Use when online.
-    func requestSync(userID: String) {
-        Task {
-            await syncAll(userID: userID)
-        }
+    /// Full sync for pull-to-refresh. Blocks until complete; re-runs if queued.
+    func syncAll(userID: String) async {
+        await runSyncLoop(userID: userID)
+    }
+
+    // MARK: - Sync Loop
+
+    private func runSyncLoop(userID: String) async {
+        repeat {
+            pendingSync = false
+            isSyncing = true
+            let db = DatabaseService(modelContext: modelContext)
+            do {
+                try await push(userID: userID, db: db)
+                try await pull(userID: userID, db: db)
+            } catch {
+                logger.error("Sync failed: \(error.localizedDescription)")
+            }
+            isSyncing = false
+        } while pendingSync
     }
 
     // MARK: - Push
 
     private func push(userID: String, db: DatabaseService) async throws {
-        // 1. Pending create categories (failure does not block entries)
+        // 1. Pending create categories
         do {
             let pendingCats = try db.getPendingCreateCategories(userID: userID)
             for cat in pendingCats {
@@ -57,7 +70,6 @@ final class SyncService {
                     try db.markCategorySynced(id: cat.id)
                 } catch {
                     if error.localizedDescription.contains("duplicate") {
-                        // Already exists on server — mark synced locally
                         try? db.markCategorySynced(id: cat.id)
                     } else {
                         logger.error("Failed to create category \(cat.id): \(error.localizedDescription)")
@@ -174,27 +186,23 @@ final class SyncService {
             )
         }
 
-        // Remove local synced categories that were deleted on the server
         try db.removeSyncedCategoriesNotIn(serverIDs: serverCategoryIDs, userID: userID)
 
-        var allServerEntryIDs = Set<String>()
-        for cat in serverCategories {
-            let entries = try await api.fetchEntriesByCategory(categoryId: cat.id)
-            for entry in entries {
-                allServerEntryIDs.insert(entry.id)
-                try db.upsertEntry(
-                    id: entry.id,
-                    userID: entry.userID,
-                    transcript: entry.transcript,
-                    title: entry.title,
-                    categoryID: entry.categoryID,
-                    createdAt: entry.createdAt,
-                    locale: entry.locale
-                )
-            }
+        let serverEntries = try await api.fetchAllEntries()
+        let serverEntryIDs = Set(serverEntries.map { $0.id })
+
+        for entry in serverEntries {
+            try db.upsertEntry(
+                id: entry.id,
+                userID: entry.userID,
+                transcript: entry.transcript,
+                title: entry.title,
+                categoryID: entry.categoryID,
+                createdAt: entry.createdAt,
+                locale: entry.locale
+            )
         }
 
-        // Remove local synced entries that were deleted on the server
-        try db.removeSyncedEntriesNotIn(serverIDs: allServerEntryIDs, userID: userID)
+        try db.removeSyncedEntriesNotIn(serverIDs: serverEntryIDs, userID: userID)
     }
 }

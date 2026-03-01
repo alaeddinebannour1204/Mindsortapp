@@ -9,7 +9,7 @@ import SwiftData
 struct CategoryDetailView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.syncCoordinator) private var syncCoordinator
+    @Environment(\.syncService) private var syncService
 
     let categoryId: String
 
@@ -184,7 +184,7 @@ struct CategoryDetailView: View {
                 categoryID: entry.categoryID,
                 locale: entry.locale
             )
-            syncCoordinator?.requestSync(userID: uid)
+            syncService?.requestSync(userID: uid)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -204,7 +204,7 @@ struct CategoryDetailView: View {
             )
             entries.insert(model, at: 0)
             editingEntryId = model.id
-            syncCoordinator?.requestSync(userID: uid)
+            syncService?.requestSync(userID: uid)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -215,7 +215,7 @@ struct CategoryDetailView: View {
         do {
             try db.deleteEntry(id: entryId)
             entries.removeAll { $0.id == entryId }
-            syncCoordinator?.requestSync(userID: uid)
+            syncService?.requestSync(userID: uid)
             // Undo toast could be added here in a later refinement
         } catch {
             errorMessage = error.localizedDescription

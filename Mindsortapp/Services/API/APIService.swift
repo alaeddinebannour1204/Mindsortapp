@@ -17,7 +17,7 @@ final class APIService {
     func fetchCategories() async throws -> [Category] {
         let response: [CategoryRow] = try await client
             .from("categories")
-            .select()
+            .select("id, user_id, name, entry_count, is_archived, color, is_user_created, created_at, last_updated, latest_entry_title")
             .eq("is_archived", value: false)
             .order("last_updated", ascending: false)
             .execute()
@@ -58,11 +58,10 @@ final class APIService {
             .execute()
     }
 
-    func fetchEntriesByCategory(categoryId: String) async throws -> [Entry] {
+    func fetchAllEntries() async throws -> [Entry] {
         let response: [EntryRow] = try await client
             .from("entries")
-            .select()
-            .eq("category_id", value: categoryId)
+            .select("id, user_id, transcript, title, category_id, color, created_at, locale")
             .order("created_at", ascending: false)
             .execute()
             .value
@@ -163,14 +162,12 @@ private struct CategoryRow: Codable {
             id: id,
             userID: user_id,
             name: name,
-            embeddingCentroid: nil,
             entryCount: entry_count ?? 0,
             isArchived: is_archived ?? false,
             isUserCreated: is_user_created ?? true,
             color: color,
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),
             lastUpdated: ISO8601DateFormatter().date(from: last_updated) ?? Date(),
-            latestEntryTitle: latest_entry_title,
             syncStatus: .synced
         )
     }
@@ -194,7 +191,6 @@ private struct EntryRow: Codable {
             transcript: transcript,
             title: title,
             categoryID: category_id,
-            embeddingVector: nil,
             color: color,
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),
             categoryName: category_name,
