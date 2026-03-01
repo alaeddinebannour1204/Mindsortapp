@@ -124,6 +124,7 @@ struct CategoryDetailView: View {
             }
         }
         .task {
+            store.newlySortedCategoryIDs.remove(categoryId)
             await load()
         }
     }

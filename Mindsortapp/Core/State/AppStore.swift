@@ -19,6 +19,16 @@ final class AppStore {
     // MARK: - UI State
     var defaultThoughtLanguage: String = "en-US"
 
+    /// Category IDs that received a new thought via process-entry.
+    /// Persisted so the badge survives app restarts.
+    var newlySortedCategoryIDs: Set<String> {
+        didSet { UserDefaults.standard.set(Array(newlySortedCategoryIDs), forKey: "newlySortedCategoryIDs") }
+    }
+
+    init() {
+        self.newlySortedCategoryIDs = Set(UserDefaults.standard.stringArray(forKey: "newlySortedCategoryIDs") ?? [])
+    }
+
     // MARK: - Actions
     func hydrate(userId: String) {
         self.userId = userId

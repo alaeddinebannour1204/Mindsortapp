@@ -17,14 +17,16 @@ private let logger = Logger(subsystem: "Mindsortapp", category: "Sync")
 final class SyncService {
     private let modelContext: ModelContext
     private let api: APIService
+    private let store: AppStore
     private var isSyncing = false
     private var pendingSync = false
 
     var syncing: Bool { isSyncing }
 
-    init(modelContext: ModelContext, api: APIService) {
+    init(modelContext: ModelContext, api: APIService, store: AppStore) {
         self.modelContext = modelContext
         self.api = api
+        self.store = store
     }
 
     /// Enqueue a sync. If one is running, run again when it completes.
@@ -101,6 +103,7 @@ final class SyncService {
                         locale: response.entry.locale
                     )
                     try db.refreshCategoryEntryCount(categoryID: response.category.id, userID: userID)
+                    store.newlySortedCategoryIDs.insert(response.category.id)
                 } catch {
                     logger.error("process-entry failed for entry \(entry.id): \(error.localizedDescription)")
                 }

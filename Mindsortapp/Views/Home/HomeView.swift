@@ -172,12 +172,7 @@ struct HomeView: View {
     }
 
     private func hasNewBadge(categoryID: String) -> Bool {
-        guard let uid = store.userId else { return false }
-        guard let lastSeen = try? db.lastSeenDate(categoryID: categoryID, userID: uid),
-              let cat = categoryModels.first(where: { $0.id == categoryID }) else {
-            return false
-        }
-        return cat.lastUpdated > lastSeen
+        store.newlySortedCategoryIDs.contains(categoryID)
     }
 
 }

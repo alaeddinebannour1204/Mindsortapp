@@ -50,7 +50,7 @@ struct RootView: View {
         authService = AuthService(client: client)
         let api = APIService(client: client)
         apiService = api
-        syncService = SyncService(modelContext: modelContext, api: api)
+        syncService = SyncService(modelContext: modelContext, api: api, store: store)
         if let uid = await authService?.currentUserId() {
             store.hydrate(userId: uid)
         }

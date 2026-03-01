@@ -108,27 +108,6 @@ final class DatabaseService {
         return model
     }
 
-    func markCategorySeen(categoryID: String, userID: String) throws {
-        var descriptor = FetchDescriptor<CategoryLastSeen>(
-            predicate: #Predicate<CategoryLastSeen> { $0.categoryID == categoryID && $0.userID == userID }
-        )
-        descriptor.fetchLimit = 1
-        if let existing = try modelContext.fetch(descriptor).first {
-            existing.lastSeenAt = Date()
-        } else {
-            modelContext.insert(CategoryLastSeen(categoryID: categoryID, userID: userID))
-        }
-        try modelContext.save()
-    }
-
-    func lastSeenDate(categoryID: String, userID: String) throws -> Date? {
-        var descriptor = FetchDescriptor<CategoryLastSeen>(
-            predicate: #Predicate<CategoryLastSeen> { $0.categoryID == categoryID && $0.userID == userID }
-        )
-        descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first?.lastSeenAt
-    }
-
     func searchLocalEntries(userID: String, query: String) throws -> [EntryModel] {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         let q = query.lowercased()
