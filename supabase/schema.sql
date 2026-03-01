@@ -334,18 +334,5 @@ CREATE POLICY "Service role can delete all audio"
   TO service_role
   USING (bucket_id = 'audio');
 
--- Optional: Scheduled cleanup (requires pg_cron + pg_net, Supabase Pro)
--- Uncomment the block below if your project has pg_cron enabled:
---
--- SELECT cron.schedule(
---   'cleanup-audio',
---   '0 * * * *',
---   $$SELECT net.http_post(
---     url := current_setting('app.settings.supabase_url') || '/functions/v1/cleanup-audio',
---     headers := jsonb_build_object(
---       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
---       'Content-Type', 'application/json'
---     ),
---     body := '{}'::jsonb
---   )$$
--- );
+-- Optional: To schedule hourly audio cleanup, enable pg_cron (Supabase Pro)
+-- and run: SELECT cron.schedule('cleanup-audio', '0 * * * *', '<http_post to cleanup-audio edge function>');
