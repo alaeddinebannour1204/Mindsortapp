@@ -164,31 +164,30 @@ final class DatabaseService {
 
     /// Fetch pending entries for a category that haven't been merged yet (isPending = true, not deleted).
     func fetchPendingEntries(categoryID: String, userID: String) throws -> [EntryModel] {
+        let notDeleted = "pendingDelete"
         let descriptor = FetchDescriptor<EntryModel>(
             predicate: #Predicate<EntryModel> {
-                $0.categoryID == categoryID
-                && $0.userID == userID
-                && $0.isPending == true
-                && $0.syncStatusRaw != "pendingDelete"
+                $0.categoryID == categoryID && $0.userID == userID
             },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
-        return try modelContext.fetch(descriptor)
+        return try modelContext.fetch(descriptor).filter {
+            $0.isPending && $0.syncStatusRaw != notDeleted
+        }
     }
 
     /// Fetch entries that were seen (seenAt != nil) but still pending — candidates for auto-merge.
     func fetchSeenPendingEntries(categoryID: String, userID: String) throws -> [EntryModel] {
+        let notDeleted = "pendingDelete"
         let descriptor = FetchDescriptor<EntryModel>(
             predicate: #Predicate<EntryModel> {
-                $0.categoryID == categoryID
-                && $0.userID == userID
-                && $0.isPending == true
-                && $0.seenAt != nil
-                && $0.syncStatusRaw != "pendingDelete"
+                $0.categoryID == categoryID && $0.userID == userID
             },
             sortBy: [SortDescriptor(\.createdAt, order: .forward)]
         )
-        return try modelContext.fetch(descriptor)
+        return try modelContext.fetch(descriptor).filter {
+            $0.isPending && $0.seenAt != nil && $0.syncStatusRaw != notDeleted
+        }
     }
 
     /// Update the note body for a category.
