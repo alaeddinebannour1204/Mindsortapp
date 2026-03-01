@@ -112,7 +112,23 @@ async function forceAssignToClosest(
   return data?.[0]?.id ?? fallbackId;
 }
 
-/** Fuzzy name match: handles "Health" vs "Health & Fitness", "work" vs "Work", etc. */
+/** Levenshtein edit distance between two strings. */
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[m][n];
+}
+
+/** Fuzzy name match: handles "Health" vs "Health & Fitness", "Finance" vs "Finances", etc. */
 function fuzzyMatchCategory(
   llmName: string,
   cats: { id: string; name: string }[],
@@ -144,6 +160,17 @@ function fuzzyMatchCategory(
     return shorter.every((w) => longer.includes(w));
   });
   if (wordMatch) return wordMatch;
+
+  // 3. Edit-distance match: catches plurals, typos, and minor spelling variations.
+  //    "Finance" matches "Finances", "Travell" matches "Travel", etc.
+  //    Only matches if the edit distance is at most 2 AND less than 30% of the name length.
+  const closeMatch = cats.find((c) => {
+    const catKey = toWords(c.name).join(' ');
+    const dist = levenshtein(suggestedKey, catKey);
+    const maxLen = Math.max(suggestedKey.length, catKey.length, 1);
+    return dist <= 2 && dist / maxLen < 0.3;
+  });
+  if (closeMatch) return closeMatch;
 
   return undefined;
 }
@@ -225,18 +252,25 @@ Deno.serve(async (req: Request) => {
     // --- Normal AI categorization path ---
     const { data: existingCategories } = await supabase
       .from('categories')
-      .select('id, name, embedding_centroid, entry_count')
+      .select('id, name, embedding_centroid, entry_count, latest_entry_title')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .order('entry_count', { ascending: false });
 
     const cats = existingCategories ?? [];
-    const categoryNames = cats.map((c: { name: string }) => c.name);
     const categoryCount = cats.length;
+
+    // Build category info list with recent entry titles for better LLM context.
+    const categoryInfo = cats.map(
+      (c: { name: string; latest_entry_title?: string }) => ({
+        name: c.name,
+        recentEntry: c.latest_entry_title ?? null,
+      }),
+    );
 
     const llmResult = await classifyTranscript(
       transcript,
-      categoryNames,
+      categoryInfo,
       lang,
     );
     const formattedTranscript = llmResult.formatted_transcript || transcript;
@@ -256,9 +290,9 @@ Deno.serve(async (req: Request) => {
       const { data: sim } = await supabase.rpc('match_category', {
         query_embedding: embedding,
         match_user_id: user.id,
-        match_threshold: 0.55,
+        match_threshold: 0.60,
       });
-      if (sim?.[0]?.similarity >= 0.55) {
+      if (sim?.[0]?.similarity >= 0.60) {
         categoryId = sim[0].id;
         await updateCentroid(supabase, categoryId, embedding);
       } else if (categoryCount >= MAX_AI_CATEGORIES) {
@@ -351,12 +385,19 @@ async function fetchWithTimeout(
 
 async function classifyTranscript(
   transcript: string,
-  existingCategories: string[],
+  existingCategories: { name: string; recentEntry: string | null }[],
   lang: string = 'en',
 ): Promise<LLMResult> {
+  // Include latest entry titles so the LLM can better understand what each category contains.
   const categoriesList =
     existingCategories.length > 0
-      ? existingCategories.map((c) => `- ${c}`).join('\n')
+      ? existingCategories
+          .map((c) =>
+            c.recentEntry
+              ? `- ${c.name} (recent note: "${c.recentEntry}")`
+              : `- ${c.name}`,
+          )
+          .join('\n')
       : '(none yet)';
 
   const categoryCount = existingCategories.length;
