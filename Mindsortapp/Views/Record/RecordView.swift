@@ -188,12 +188,19 @@ struct RecordView: View {
         let transcript = transcriptionService.assembleTranscript()
         let audioPath = recordingService.audioFileURL?.lastPathComponent
 
+        // Guard against accidental tap: require either a non-empty transcript
+        // or an audio file with meaningful content (> 10KB ≈ ~1 second of AAC).
+        let audioFileSize = recordingService.audioFileURL
+            .flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int } ?? 0
+        if transcript.isEmpty && audioFileSize < 10_000 {
+            errorMessage = "No speech detected. Try again."
+            return
+        }
+
         guard let uid = store.userId else {
             errorMessage = "Not signed in."
             return
         }
-
-        // Save even if transcript is empty — the audio file will be re-transcribed by Whisper on the server.
         do {
             let db = DatabaseService(modelContext: modelContext)
             _ = try db.createEntry(

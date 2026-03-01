@@ -39,12 +39,24 @@ CREATE POLICY "Users can delete their own audio"
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Scheduled cleanup: clear audio_url on entries older than 24 hours.
--- Requires pg_cron extension (enabled by default on Supabase).
--- The actual storage object deletion is handled by a separate cron edge function
--- or Supabase Storage lifecycle rules.
+-- RLS: service role can delete all audio (for cleanup edge function)
+CREATE POLICY "Service role can delete all audio"
+  ON storage.objects FOR DELETE
+  TO service_role
+  USING (bucket_id = 'audio');
+
+-- Scheduled cleanup: invoke the cleanup-audio edge function every hour.
+-- The function deletes storage objects AND nullifies audio_url in one pass.
+-- Requires pg_cron and pg_net extensions (enabled by default on Supabase Pro).
 SELECT cron.schedule(
-  'cleanup-audio-urls',
+  'cleanup-audio',
   '0 * * * *',  -- every hour
-  $$UPDATE entries SET audio_url = NULL WHERE audio_url IS NOT NULL AND created_at < now() - interval '24 hours'$$
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.supabase_url') || '/functions/v1/cleanup-audio',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
+      'Content-Type', 'application/json'
+    ),
+    body := '{}'::jsonb
+  )$$
 );

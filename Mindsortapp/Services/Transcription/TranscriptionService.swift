@@ -51,13 +51,16 @@ final class TranscriptionService {
         request?.append(buffer)
     }
 
-    /// Stop recognition and deliver the final assembled transcript.
+    /// Stop recognition. Signals end-of-audio so the recognizer can finalize
+    /// whatever it has buffered, but does NOT cancel the task — cancelling would
+    /// discard the pending final result. The task will finish on its own once it
+    /// processes the remaining audio.
     func stopRecognition() {
         active = false
         request?.endAudio()
         request = nil
-        task?.cancel()
-        task = nil
+        // Do NOT cancel the task here — let it deliver its final result.
+        // The task will complete naturally after endAudio() is called.
     }
 
     /// Assemble the full transcript from all segments + any trailing interim text.
