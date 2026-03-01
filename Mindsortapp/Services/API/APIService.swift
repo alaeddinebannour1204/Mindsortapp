@@ -61,7 +61,7 @@ final class APIService {
     func fetchAllEntries() async throws -> [Entry] {
         let response: [EntryRow] = try await client
             .from("entries")
-            .select("id, user_id, transcript, title, category_id, color, created_at, locale")
+            .select("id, user_id, transcript, title, category_id, color, created_at, locale, audio_url")
             .order("created_at", ascending: false)
             .execute()
             .value
@@ -88,11 +88,22 @@ final class APIService {
             .execute()
     }
 
-    func processEntry(transcript: String, locale: String?, categoryId: String?) async throws -> ProcessEntryResponse {
+    /// Upload an audio file to Supabase Storage and return the storage path.
+    func uploadAudio(fileURL: URL, userID: String) async throws -> String {
+        let data = try Data(contentsOf: fileURL)
+        let storagePath = "\(userID)/\(fileURL.lastPathComponent)"
+        try await client.storage
+            .from("audio")
+            .upload(storagePath, data: data, options: .init(contentType: "audio/mp4"))
+        return storagePath
+    }
+
+    func processEntry(transcript: String, locale: String?, categoryId: String?, audioPath: String? = nil) async throws -> ProcessEntryResponse {
         struct Payload: Encodable {
             let transcript: String
             let locale: String?
             let category_id: String?
+            let audio_path: String?
         }
         // Ensure we have a valid user session before calling the Edge Function.
         do {
@@ -102,7 +113,7 @@ final class APIService {
                           userInfo: [NSLocalizedDescriptionKey: "No active session. Please sign in again."])
         }
         let row: ProcessEntryResponseRow = try await client.functions
-            .invoke("process-entry", options: .init(body: Payload(transcript: transcript, locale: locale, category_id: categoryId)))
+            .invoke("process-entry", options: .init(body: Payload(transcript: transcript, locale: locale, category_id: categoryId, audio_path: audioPath)))
         return ProcessEntryResponse(
             entry: row.entry.toEntry(),
             category: row.category.toCategory(),
@@ -183,6 +194,7 @@ private struct EntryRow: Codable {
     let created_at: String
     let category_name: String?
     let locale: String?
+    let audio_url: String?
 
     func toEntry() -> Entry {
         Entry(
@@ -195,7 +207,8 @@ private struct EntryRow: Codable {
             createdAt: ISO8601DateFormatter().date(from: created_at) ?? Date(),
             categoryName: category_name,
             syncStatus: .synced,
-            locale: locale
+            locale: locale,
+            audioURL: audio_url
         )
     }
 }

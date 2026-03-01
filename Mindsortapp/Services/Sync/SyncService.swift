@@ -39,9 +39,18 @@ final class SyncService {
         Task { await runSyncLoop(userID: userID) }
     }
 
-    /// Full sync for pull-to-refresh. Blocks until complete; re-runs if queued.
+    /// Full sync for pull-to-refresh.
+    /// Runs in an unstructured Task so it survives the `.refreshable` scope.
     func syncAll(userID: String) async {
-        await runSyncLoop(userID: userID)
+        // Use withCheckedContinuation to block the refreshable indicator
+        // while the detached work runs, but the sync itself is not cancelled
+        // when the user lifts their finger.
+        await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                await runSyncLoop(userID: userID)
+                continuation.resume()
+            }
+        }
     }
 
     // MARK: - Sync Loop
@@ -52,9 +61,15 @@ final class SyncService {
             isSyncing = true
             let db = DatabaseService(modelContext: modelContext)
             do {
+                try Task.checkCancellation()
                 try await push(userID: userID, db: db)
                 try await pull(userID: userID, db: db)
                 lastSyncFailed = false
+            } catch is CancellationError {
+                // Task was cancelled (e.g. view disappeared) — not a real failure.
+                logger.info("Sync cancelled")
+            } catch let error as URLError where error.code == .cancelled {
+                logger.info("Sync network request cancelled")
             } catch {
                 lastSyncFailed = true
                 logger.error("Sync failed: \(error.localizedDescription)")
@@ -90,10 +105,24 @@ final class SyncService {
             let pendingEntries = try db.getPendingCreateEntries(userID: userID)
             for entry in pendingEntries {
                 do {
+                    // Upload audio file to Supabase Storage if available
+                    var audioStoragePath: String?
+                    if let localFileName = entry.audioLocalPath {
+                        let localURL = RecordingService.audioDirectory.appendingPathComponent(localFileName)
+                        if FileManager.default.fileExists(atPath: localURL.path) {
+                            do {
+                                audioStoragePath = try await api.uploadAudio(fileURL: localURL, userID: userID)
+                            } catch {
+                                logger.error("Audio upload failed for \(entry.id), continuing without audio: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+
                     let response = try await api.processEntry(
                         transcript: entry.transcript,
                         locale: entry.locale,
-                        categoryId: entry.categoryID
+                        categoryId: entry.categoryID,
+                        audioPath: audioStoragePath
                     )
                     try db.replaceEntryWithServer(
                         localId: entry.id,
@@ -107,6 +136,12 @@ final class SyncService {
                     )
                     try db.refreshCategoryEntryCount(categoryID: response.category.id, userID: userID)
                     store.newlySortedCategoryIDs.insert(response.category.id)
+
+                    // Delete local audio file after successful sync
+                    if let localFileName = entry.audioLocalPath {
+                        let localURL = RecordingService.audioDirectory.appendingPathComponent(localFileName)
+                        try? FileManager.default.removeItem(at: localURL)
+                    }
                 } catch {
                     logger.error("process-entry failed for entry \(entry.id): \(error.localizedDescription)")
                 }

@@ -15,8 +15,6 @@ struct RecordView: View {
     @State private var selectedLocale = "en-US"
     @State private var isRecording = false
     @State private var recordingStartDate: Date?
-    @State private var finalTranscript = ""
-    @State private var interimTranscript = ""
     @State private var saved = false
     @State private var permissionDenied = false
     @State private var errorMessage: String?
@@ -25,68 +23,13 @@ struct RecordView: View {
     private let recordingService = RecordingService()
     private let categoryId: String?
 
-    private var displayTranscript: String {
-        if interimTranscript.isEmpty {
-            return finalTranscript
-        }
-        return finalTranscript.isEmpty ? interimTranscript : finalTranscript + " " + interimTranscript
-    }
-
     var body: some View {
         NavigationStack {
             VStack(spacing: Theme.Spacing.xl) {
                 if saved {
-                    VStack(spacing: Theme.Spacing.lg) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundStyle(Theme.Colors.success)
-                        Text("Thought saved!")
-                            .font(Theme.Typography.h2())
-                        Button("Done") {
-                            dismiss()
-                        }
-                        .font(Theme.Typography.h3())
-                        .padding(.horizontal, Theme.Spacing.xl)
-                        .padding(.vertical, Theme.Spacing.md)
-                        .background(Theme.Colors.accent)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    savedView
                 } else {
-                    if isRecording, let start = recordingStartDate {
-                        Text(timeString(from: start))
-                            .font(.system(size: 48, weight: .light, design: .monospaced))
-                            .foregroundStyle(Theme.Colors.text)
-                    } else {
-                        Text(isRecording ? "Recording…" : "Tap to stop")
-                            .font(Theme.Typography.h2())
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                    }
-
-                    ScrollView {
-                        Text(displayTranscript)
-                            .font(Theme.Typography.body())
-                            .foregroundStyle(Theme.Colors.text)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                    }
-                    .frame(maxHeight: 200)
-                    .background(Theme.Colors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Theme.Colors.border, lineWidth: 1)
-                    )
-
-                    Spacer()
-
-                    RecordButton(isRecording: isRecording) {
-                        if isRecording {
-                            stopAndSave()
-                        }
-                    }
-                    .padding(.bottom, Theme.Spacing.xxl)
+                    recordingContentView
                 }
             }
             .padding(Theme.Spacing.lg)
@@ -142,20 +85,74 @@ struct RecordView: View {
         }
     }
 
+    // MARK: - Subviews
+
+    private var savedView: some View {
+        VStack(spacing: Theme.Spacing.lg) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(Theme.Colors.success)
+            Text("Thought saved!")
+                .font(Theme.Typography.h2())
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            dismiss()
+        }
+    }
+
+    private var recordingContentView: some View {
+        VStack(spacing: Theme.Spacing.xl) {
+            Spacer()
+
+            if isRecording, let start = recordingStartDate {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text(timeString(from: start, now: context.date))
+                        .font(.system(size: 48, weight: .light, design: .monospaced))
+                        .foregroundStyle(Theme.Colors.text)
+                }
+
+                Text("Recording…")
+                    .font(Theme.Typography.body())
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            } else {
+                Text("Preparing…")
+                    .font(Theme.Typography.h2())
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            Spacer()
+
+            RecordButton(isRecording: isRecording) {
+                if isRecording {
+                    stopAndSave()
+                }
+            }
+            .padding(.bottom, Theme.Spacing.xxl)
+        }
+    }
+
+    // MARK: - Init
+
     init(categoryId: String? = nil) {
         self.categoryId = (categoryId == "__inbox__" || categoryId?.isEmpty == true) ? nil : categoryId
     }
+
+    // MARK: - Helpers
 
     private func localeName(for code: String) -> String {
         TranscriptionService.supportedLocales.first { $0.0 == code }?.1 ?? code
     }
 
-    private func timeString(from start: Date) -> String {
-        let elapsed = Int(Date().timeIntervalSince(start))
+    private func timeString(from start: Date, now: Date = Date()) -> String {
+        let elapsed = Int(now.timeIntervalSince(start))
         let m = elapsed / 60
         let s = elapsed % 60
         return String(format: "%02d:%02d", m, s)
     }
+
+    // MARK: - Recording
 
     private func startRecordingIfAllowed() async {
         let micOK = await recordingService.requestPermission()
@@ -168,13 +165,6 @@ struct RecordView: View {
     }
 
     private func startRecording() {
-        transcriptionService.onInterim = { text in
-            interimTranscript = text
-        }
-        transcriptionService.onFinal = { text in
-            finalTranscript += (finalTranscript.isEmpty ? "" : " ") + text
-            interimTranscript = ""
-        }
         transcriptionService.onError = { _ in }
         do {
             try transcriptionService.startRecognition(localeIdentifier: selectedLocale)
@@ -194,18 +184,33 @@ struct RecordView: View {
         recordingService.stopRecording()
         transcriptionService.stopRecognition()
         isRecording = false
-        let transcript = (finalTranscript + " " + interimTranscript).trimmingCharacters(in: .whitespaces)
-        if transcript.isEmpty {
+
+        let transcript = transcriptionService.assembleTranscript()
+        let audioPath = recordingService.audioFileURL?.lastPathComponent
+
+        // Guard against accidental tap: require either a non-empty transcript
+        // or an audio file with meaningful content (> 10KB ≈ ~1 second of AAC).
+        let audioFileSize = recordingService.audioFileURL
+            .flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int } ?? 0
+        if transcript.isEmpty && audioFileSize < 10_000 {
             errorMessage = "No speech detected. Try again."
             return
         }
+
         guard let uid = store.userId else {
             errorMessage = "Not signed in."
             return
         }
         do {
             let db = DatabaseService(modelContext: modelContext)
-            _ = try db.createEntry(userID: uid, transcript: transcript, title: nil, categoryID: categoryId, locale: selectedLocale)
+            _ = try db.createEntry(
+                userID: uid,
+                transcript: transcript,
+                title: nil,
+                categoryID: categoryId,
+                locale: selectedLocale,
+                audioLocalPath: audioPath
+            )
             store.refreshInboxCount((try? db.inboxCount(userID: uid)) ?? 0)
             syncService?.requestSync(userID: uid)
             saved = true

@@ -17,6 +17,7 @@ final class EntryModel {
     var createdAt: Date
     var syncStatusRaw: String
     var locale: String?
+    var audioLocalPath: String?
 
     init(
         id: String,
@@ -27,7 +28,8 @@ final class EntryModel {
         color: String? = nil,
         createdAt: Date = Date(),
         syncStatus: SyncStatus = .synced,
-        locale: String? = nil
+        locale: String? = nil,
+        audioLocalPath: String? = nil
     ) {
         self.id = id
         self.userID = userID
@@ -38,6 +40,7 @@ final class EntryModel {
         self.createdAt = createdAt
         self.syncStatusRaw = syncStatus.rawValue
         self.locale = locale
+        self.audioLocalPath = audioLocalPath
     }
 
     var syncStatus: SyncStatus {
