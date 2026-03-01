@@ -38,6 +38,7 @@ struct Entry: Codable, Identifiable, Sendable {
     var categoryName: String?
     var syncStatus: SyncStatus?
     var locale: String?
+    var audioURL: String?
 }
 
 struct ProcessEntryResponse: Codable, Sendable {

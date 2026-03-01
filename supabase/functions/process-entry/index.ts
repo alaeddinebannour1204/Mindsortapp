@@ -1,7 +1,12 @@
 // Supabase Edge Function: process-entry
-// Receives a raw speech-to-text transcript, corrects recognition errors,
-// formats as clean bullet points, generates a title, picks the best
-// existing category (or creates one), and stores the entry.
+// Receives a raw speech-to-text transcript (and optionally an audio file path
+// in Supabase Storage), corrects recognition errors, formats as clean bullet
+// points, generates a title, picks the best existing category (or creates one),
+// and stores the entry.
+//
+// When audio_path is provided the function downloads the file from the "audio"
+// bucket and re-transcribes it with OpenAI Whisper. The Whisper transcript is
+// used as the primary input (more accurate than on-device Apple STT).
 //
 // A DB trigger on `entries` auto-manages category `entry_count`,
 // `latest_entry_title`, and `last_updated`. No manual count management here.
@@ -14,6 +19,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const MAX_TRANSCRIPT_LENGTH = 10000;
 const OPENAI_TIMEOUT_MS = 25000;
+const WHISPER_TIMEOUT_MS = 60000;
 const MAX_AI_CATEGORIES = 10;
 
 const corsHeaders = {
@@ -155,6 +161,60 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// --- Whisper transcription ---
+
+async function transcribeWithWhisper(
+  supabase: SupabaseClient,
+  audioPath: string,
+  lang: string,
+): Promise<string> {
+  // Download audio from Supabase Storage
+  const { data: fileData, error: downloadError } = await supabase.storage
+    .from('audio')
+    .download(audioPath);
+
+  if (downloadError || !fileData) {
+    throw new Error(
+      `Failed to download audio: ${downloadError?.message ?? 'no data'}`,
+    );
+  }
+
+  // Map locale codes (e.g. "en-US") to ISO 639-1 for Whisper
+  const langCode = lang.split('-')[0] || 'en';
+
+  // Send to OpenAI Whisper API
+  const formData = new FormData();
+  formData.append('file', fileData, 'recording.m4a');
+  formData.append('model', 'whisper-1');
+  formData.append('language', langCode);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WHISPER_TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      'https://api.openai.com/v1/audio/transcriptions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: formData,
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Whisper API error: ${response.status} - ${errorText}`,
+      );
+    }
+    const result = await response.json();
+    return result.text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // --- Main handler ---
 
 Deno.serve(async (req: Request) => {
@@ -181,12 +241,39 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { transcript, category_id: manualCategoryId, locale } =
-      await req.json();
+    const {
+      transcript: appleTranscript,
+      category_id: manualCategoryId,
+      locale,
+      audio_path: audioPath,
+    } = await req.json();
     const lang = typeof locale === 'string' && locale ? locale : 'en';
 
-    if (!transcript || typeof transcript !== 'string') {
+    // Re-transcribe with Whisper if audio is available
+    let transcript: string;
+    let audioUrl: string | null = null;
+
+    if (audioPath && typeof audioPath === 'string') {
+      try {
+        transcript = await transcribeWithWhisper(supabase, audioPath, lang);
+        audioUrl = audioPath;
+      } catch (whisperErr) {
+        console.error('Whisper transcription failed, falling back to Apple transcript:', whisperErr);
+        transcript = appleTranscript;
+      }
+    } else {
+      transcript = appleTranscript;
+    }
+
+    if ((!transcript || typeof transcript !== 'string') && (!appleTranscript || typeof appleTranscript !== 'string')) {
       return jsonResponse({ error: 'Missing transcript' }, 400);
+    }
+    // Fall back to Apple transcript if Whisper returned empty
+    if (!transcript || transcript.trim().length === 0) {
+      transcript = appleTranscript;
+    }
+    if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
+      return jsonResponse({ error: 'No speech detected' }, 400);
     }
     if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
       return jsonResponse({ error: 'Transcript too long' }, 400);
@@ -207,6 +294,7 @@ Deno.serve(async (req: Request) => {
           category_id: manualCategoryId,
           embedding_vector: embedding,
           locale: lang,
+          audio_url: audioUrl,
         })
         .select()
         .single();
@@ -306,6 +394,7 @@ Deno.serve(async (req: Request) => {
         category_id: categoryId,
         embedding_vector: embedding,
         locale: lang,
+        audio_url: audioUrl,
       })
       .select()
       .single();

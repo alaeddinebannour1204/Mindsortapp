@@ -105,10 +105,24 @@ final class SyncService {
             let pendingEntries = try db.getPendingCreateEntries(userID: userID)
             for entry in pendingEntries {
                 do {
+                    // Upload audio file to Supabase Storage if available
+                    var audioStoragePath: String?
+                    if let localFileName = entry.audioLocalPath {
+                        let localURL = RecordingService.audioDirectory.appendingPathComponent(localFileName)
+                        if FileManager.default.fileExists(atPath: localURL.path) {
+                            do {
+                                audioStoragePath = try await api.uploadAudio(fileURL: localURL, userID: userID)
+                            } catch {
+                                logger.error("Audio upload failed for \(entry.id), continuing without audio: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+
                     let response = try await api.processEntry(
                         transcript: entry.transcript,
                         locale: entry.locale,
-                        categoryId: entry.categoryID
+                        categoryId: entry.categoryID,
+                        audioPath: audioStoragePath
                     )
                     try db.replaceEntryWithServer(
                         localId: entry.id,
@@ -122,6 +136,12 @@ final class SyncService {
                     )
                     try db.refreshCategoryEntryCount(categoryID: response.category.id, userID: userID)
                     store.newlySortedCategoryIDs.insert(response.category.id)
+
+                    // Delete local audio file after successful sync
+                    if let localFileName = entry.audioLocalPath {
+                        let localURL = RecordingService.audioDirectory.appendingPathComponent(localFileName)
+                        try? FileManager.default.removeItem(at: localURL)
+                    }
                 } catch {
                     logger.error("process-entry failed for entry \(entry.id): \(error.localizedDescription)")
                 }

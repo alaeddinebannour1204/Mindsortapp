@@ -92,7 +92,7 @@ final class DatabaseService {
         return try modelContext.fetchCount(descriptor)
     }
 
-    func createEntry(userID: String, transcript: String, title: String?, categoryID: String?, locale: String?) throws -> EntryModel {
+    func createEntry(userID: String, transcript: String, title: String?, categoryID: String?, locale: String?, audioLocalPath: String? = nil) throws -> EntryModel {
         let id = UUID().uuidString
         let model = EntryModel(
             id: id,
@@ -101,7 +101,8 @@ final class DatabaseService {
             title: title ?? "",
             categoryID: categoryID,
             syncStatus: .pendingCreate,
-            locale: locale
+            locale: locale,
+            audioLocalPath: audioLocalPath
         )
         modelContext.insert(model)
         try modelContext.save()

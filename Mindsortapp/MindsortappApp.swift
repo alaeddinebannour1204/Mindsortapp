@@ -27,6 +27,9 @@ struct MindsortappApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .task {
+                    RecordingService.cleanupOldRecordings()
+                }
         }
         .modelContainer(sharedModelContainer)
     }
